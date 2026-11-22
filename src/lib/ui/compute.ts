@@ -8,7 +8,7 @@ import { decideObligation, factsFromCase, type ObligationResult } from '../core/
 import { selectRulebook } from '../core/resolve';
 import { RULEBOOKS } from '../rules';
 import type { Rulebook } from '../rules/schema';
-import { activeSources, authorizedSourceKey, toAnswers, toCase, type FormState } from './form';
+import { activeSources, authorizedSourceKey, formProblems, toAnswers, toCase, type FormState } from './form';
 
 export type Computed =
 	| { readonly kind: 'EMPTY'; readonly rb: Rulebook }
@@ -30,6 +30,8 @@ export function compute(f: FormState): Computed {
 		throw e;
 	}
 	if (activeSources(f).length === 0) return { kind: 'EMPTY', rb };
+	const problems = formProblems(f);
+	if (problems.length > 0) return { kind: 'ERROR', rb, problems };
 	try {
 		const c = toCase(f);
 		const authorized = authorizedSourceKey(f);

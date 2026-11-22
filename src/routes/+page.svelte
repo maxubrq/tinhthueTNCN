@@ -21,7 +21,7 @@
 	import type { Unit } from '#lib/ui/amount.ts';
 	import { compute, SUPPORTED_YEARS } from '#lib/ui/compute.ts';
 	import { citations, flagLabel, flagTexts, VERDICT_TITLE } from '#lib/ui/describe.ts';
-	import { activeSources, defaultForm, newDependent, newSource, type FormState } from '#lib/ui/form.ts';
+	import { activeSources, defaultForm, newDependent, newExtra, newPeriod, newSource, type FormState } from '#lib/ui/form.ts';
 	import * as storage from '#lib/ui/storage.ts';
 
 	const LATEST = SUPPORTED_YEARS[SUPPORTED_YEARS.length - 1];
@@ -93,6 +93,31 @@
 	function addSource() {
 		const key = `s${form.nextKey++}`;
 		form.sources.push(newSource(key, `Nơi trả thu nhập ${form.sources.length + 1}`));
+	}
+
+	function sourceOf(key: string) {
+		return form.sources.find((s) => s.key === key)!;
+	}
+
+	function addPeriod(sourceKey: string) {
+		const s = sourceOf(sourceKey);
+		const last = Math.max(0, ...s.periods.map((p) => Math.max(p.fromMonth, p.toMonth)));
+		const from = Math.min(12, last + 1);
+		s.periods.push(newPeriod(`${sourceKey}p${form.nextKey++}`, from, 12));
+	}
+
+	function removePeriod(sourceKey: string, key: string) {
+		const s = sourceOf(sourceKey);
+		s.periods = s.periods.filter((p) => p.key !== key);
+	}
+
+	function addExtra(sourceKey: string) {
+		sourceOf(sourceKey).extras.push(newExtra(`${sourceKey}e${form.nextKey++}`));
+	}
+
+	function removeExtra(sourceKey: string, key: string) {
+		const s = sourceOf(sourceKey);
+		s.extras = s.extras.filter((e) => e.key !== key);
 	}
 
 	function removeSource(key: string) {
@@ -255,63 +280,107 @@
 							]}
 							bind:value={s.contract}
 						/>
-						<AmountField
-							label="Thu nhập mỗi tháng"
-							bind:value={s.monthly}
-							hint="Lương và phụ cấp chịu thuế, trước khi trừ bảo hiểm và thuế."
-						/>
-						<div class="months">
-							<span class="label" id="m-{s.key}">Các tháng nhận lương</span>
-							<div class="row" role="group" aria-labelledby="m-{s.key}">
-								<select aria-label="Từ tháng" bind:value={s.fromMonth}>
-									{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
-								</select>
-								<span aria-hidden="true">đến</span>
-								<select aria-label="Đến tháng" bind:value={s.toMonth}>
-									{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
-								</select>
-							</div>
-						</div>
-						<Choice
-							legend="Bảo hiểm bắt buộc tính trên"
-							options={[
-								{ value: 'GROSS', label: 'Thu nhập vừa nhập' },
-								{ value: 'OTHER', label: 'Mức lương khác' },
-								{ value: 'NONE', label: 'Không đóng' }
-							]}
-							bind:value={s.insurance}
-						/>
-						{#if s.insurance === 'OTHER'}
-							<AmountField label="Lương đóng bảo hiểm mỗi tháng" bind:value={s.insuranceSalary} hint="Có trên hợp đồng lao động hoặc phiếu lương." />
-						{/if}
-						{#if s.insurance !== 'NONE'}
-							<label class="text">
-								<span class="label">Vùng lương tối thiểu</span>
-								<select bind:value={s.region}>
-									<option value="I">Vùng I (nội thành Hà Nội, TP.HCM và một số nơi khác)</option>
-									<option value="II">Vùng II</option>
-									<option value="III">Vùng III</option>
-									<option value="IV">Vùng IV</option>
-								</select>
-								<span class="hint">Chỉ có tác dụng khi lương đóng bảo hiểm từ {capText(minUnemploymentCap)}/tháng trở lên, mức trần bảo hiểm thất nghiệp thấp nhất.</span>
-							</label>
-						{/if}
-						<AmountField label="Thưởng, khoản trả một lần" bind:value={s.bonus} hint="Tổng thưởng Tết, thưởng hiệu quả và các khoản trả một lần trong năm." />
-						{#if (s.bonus ?? 0) > 0}
-							<label class="text">
-								<span class="label">Tháng nhận thưởng</span>
-								<span class="hint">Nhiều khoản thì chọn tháng nhận khoản lớn nhất.</span>
-								<select bind:value={s.bonusMonth}>
-									{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
-								</select>
-							</label>
-						{/if}
-						<AmountField
-							label="Thuế đã khấu trừ cả năm"
-							bind:value={s.withheld}
-							hint="Xem trên eTax Mobile hoặc chứng từ khấu trừ thuế. Để trống thì app tự ước tính và ghi rõ đó là số ước tính."
-						/>
 					</div>
+
+					<div class="sub">
+						<p class="label">Lương hằng tháng</p>
+						<p class="hint">
+							Mỗi khoảng tháng một mức lương. Tăng lương thì thêm khoảng mới. Nghỉ thai sản hay nghỉ không
+							lương thì bỏ trống những tháng đó.
+						</p>
+						{#each s.periods as p (p.key)}
+							<div class="period">
+								<div class="fields">
+									<div class="months">
+										<span class="label" id="m-{p.key}">Từ tháng, đến tháng</span>
+										<div class="row" role="group" aria-labelledby="m-{p.key}">
+											<select aria-label="Từ tháng" bind:value={p.fromMonth}>
+												{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
+											</select>
+											<span aria-hidden="true">đến</span>
+											<select aria-label="Đến tháng" bind:value={p.toMonth}>
+												{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
+											</select>
+										</div>
+									</div>
+									<AmountField
+										label="Thu nhập mỗi tháng"
+										bind:value={p.monthly}
+										hint="Lương và phụ cấp chịu thuế, trước khi trừ bảo hiểm và thuế."
+									/>
+									<Choice
+										legend="Bảo hiểm bắt buộc tính trên"
+										options={[
+											{ value: 'GROSS', label: 'Thu nhập vừa nhập' },
+											{ value: 'OTHER', label: 'Mức lương khác' },
+											{ value: 'NONE', label: 'Không đóng' }
+										]}
+										bind:value={p.insurance}
+									/>
+									{#if p.insurance === 'OTHER'}
+										<AmountField label="Lương đóng bảo hiểm mỗi tháng" bind:value={p.insuranceSalary} hint="Có trên hợp đồng lao động hoặc phiếu lương." />
+									{/if}
+								</div>
+								{#if s.periods.length > 1}
+									<button type="button" class="quiet" onclick={() => removePeriod(s.key, p.key)}>
+										Bỏ khoảng tháng {p.fromMonth} đến {p.toMonth}
+									</button>
+								{/if}
+							</div>
+						{/each}
+						<button type="button" class="add" onclick={() => addPeriod(s.key)}>Thêm khoảng lương</button>
+					</div>
+
+					{#if s.periods.some((p) => p.insurance !== 'NONE')}
+						<label class="text region">
+							<span class="label">Vùng lương tối thiểu</span>
+							<select bind:value={s.region}>
+								<option value="I">Vùng I (nội thành Hà Nội, TP.HCM và một số nơi khác)</option>
+								<option value="II">Vùng II</option>
+								<option value="III">Vùng III</option>
+								<option value="IV">Vùng IV</option>
+							</select>
+							<span class="hint">Chỉ có tác dụng khi lương đóng bảo hiểm từ {capText(minUnemploymentCap)}/tháng trở lên, mức trần bảo hiểm thất nghiệp thấp nhất.</span>
+						</label>
+					{/if}
+
+					<div class="sub">
+						<p class="label">Khoản trả một lần</p>
+						<p class="hint">Thưởng Tết, thưởng hiệu quả, cổ phiếu ESOP: mỗi khoản một dòng.</p>
+						{#each s.extras as e (e.key)}
+							<div class="period">
+								<div class="fields">
+									<AmountField label="Số tiền" bind:value={e.amount} />
+									<label class="text">
+										<span class="label">Tháng nhận</span>
+										<select bind:value={e.month}>
+											{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
+										</select>
+									</label>
+								</div>
+								{#if s.contract === 'LONG'}
+									<label class="check">
+										<input type="checkbox" bind:checked={e.afterLeaving} />
+										Nơi này trả khoản này sau khi bạn đã nghỉ việc ở đây
+									</label>
+									{#if e.afterLeaving}
+										<p class="hint">
+											Khoản này bị khấu trừ 10% và luôn được gộp khi quyết toán. Nếu đây là cổ phiếu ESOP bạn chưa
+											bán, thuế có thể chỉ phát sinh khi bán; hãy hỏi công ty họ đã tính thế nào.
+										</p>
+									{/if}
+								{/if}
+								<button type="button" class="quiet" onclick={() => removeExtra(s.key, e.key)}>Bỏ khoản này</button>
+							</div>
+						{/each}
+						<button type="button" class="add" onclick={() => addExtra(s.key)}>Thêm khoản trả một lần</button>
+					</div>
+
+					<AmountField
+						label="Thuế đã khấu trừ cả năm"
+						bind:value={s.withheld}
+						hint="Xem trên eTax Mobile hoặc chứng từ khấu trừ thuế. Để trống thì app tự ước tính và ghi rõ đó là số ước tính."
+					/>
 					{#if form.sources.length > 1}
 						<button type="button" class="quiet" onclick={() => removeSource(s.key)}>Bỏ {s.name || 'nơi này'}</button>
 					{/if}
@@ -735,6 +804,22 @@
 	}
 	.source-head + * {
 		clear: both;
+	}
+	.sub {
+		display: grid;
+		gap: var(--canon-space-3, 0.5rem);
+	}
+	.sub > .label {
+		padding-bottom: 0;
+	}
+	.period {
+		display: grid;
+		gap: var(--canon-space-3, 0.5rem);
+		border-left: var(--canon-rule-thin, 1px) solid var(--canon-ink, #111);
+		padding: var(--canon-space-3, 0.5rem) 0 var(--canon-space-3, 0.5rem) var(--canon-space-1, 1.5rem);
+	}
+	.region {
+		max-width: 32rem;
 	}
 	.idx {
 		color: var(--canon-signal, #d71920);

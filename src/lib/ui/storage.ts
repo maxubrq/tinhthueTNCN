@@ -3,7 +3,7 @@
  * đâu, không đưa vào URL. Mọi truy cập localStorage bọc try/catch vì có thể bị chặn.
  * Hồ sơ lưu kèm `rulebookId` và `revision` để báo khi luật đã đổi (I16).
  */
-import type { FormState } from './form';
+import { migrateForm, type FormState, type FormStateV1 } from './form';
 
 const KEY = 'tinhthue-tncn:ho-so';
 
@@ -28,8 +28,11 @@ export function load(): Saved | null {
 	try {
 		const raw = localStorage.getItem(KEY);
 		if (!raw) return null;
-		const data = JSON.parse(raw) as Saved;
-		return data?.form?.version === 1 ? data : null;
+		// Hồ sơ bản 1 (trước 22/11/2026) vẫn mở được: chuyển sang bản 2 khi đọc.
+		const data = JSON.parse(raw) as Omit<Saved, 'form'> & { form: FormStateV1 | FormState };
+		const v = data?.form?.version;
+		if (v !== 1 && v !== 2) return null;
+		return { ...data, form: migrateForm(data.form) };
 	} catch {
 		return null;
 	}

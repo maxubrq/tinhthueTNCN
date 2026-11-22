@@ -2,6 +2,12 @@
  * Mô hình form của trang và lớp chống hỏng (kien-truc-v0 §3.2): chuyển câu trả lời của
  * người dùng thành `TaxYearCase` chuẩn trước khi đưa vào core. Module này không suy diễn
  * luật; mọi số tiền đã là số nguyên đồng (đơn vị nghìn, triệu chỉ sống trong ô nhập).
+ *
+ * Bản 2: mỗi nơi trả lương có dòng thời gian riêng.
+ *  - `periods`: các khoảng tháng có lương thường, mỗi khoảng một mức lương. Nghỉ thai sản
+ *    là khoảng trống giữa hai khoảng; tăng lương là hai khoảng liền nhau.
+ *  - `extras`: các khoản trả một lần (thưởng, ESOP), có cờ "trả sau khi đã nghỉ việc".
+ * Bất biến I17: một nơi trả lương là một công ty, dù nhập bao nhiêu khoảng.
  */
 import type { Claims, Dependent, IncomeSource, Payment, TaxYearCase } from '../core/case';
 import type { TriageAnswers } from '../core/obligation';
@@ -10,20 +16,32 @@ import type { IsoDate, WageRegion } from '../rules/schema';
 
 export type InsuranceMode = 'GROSS' | 'OTHER' | 'NONE';
 
+export interface PeriodForm {
+	key: string;
+	fromMonth: number;
+	toMonth: number;
+	/** Thu nhập chịu thuế mỗi tháng trong khoảng này, trước bảo hiểm. */
+	monthly: number | null;
+	insurance: InsuranceMode;
+	insuranceSalary: number | null;
+}
+
+export interface ExtraForm {
+	key: string;
+	month: number;
+	amount: number | null;
+	/** Nơi này trả khoản này sau khi bạn đã nghỉ việc ở đó. */
+	afterLeaving: boolean;
+}
+
 export interface SourceForm {
 	key: string;
 	name: string;
 	/** LONG: hợp đồng từ 3 tháng. SHORT: dưới 3 tháng hoặc không có hợp đồng. */
 	contract: 'LONG' | 'SHORT';
-	/** Thu nhập chịu thuế mỗi tháng, trước bảo hiểm. */
-	monthly: number | null;
-	fromMonth: number;
-	toMonth: number;
-	insurance: InsuranceMode;
-	insuranceSalary: number | null;
+	periods: PeriodForm[];
+	extras: ExtraForm[];
 	region: WageRegion;
-	bonus: number | null;
-	bonusMonth: number;
 	/** Tổng đã khấu trừ cả năm, người dùng nhập. `null` = để app ước tính. */
 	withheld: number | null;
 }
@@ -37,7 +55,7 @@ export interface DependentForm {
 }
 
 export interface FormState {
-	version: 1;
+	version: 2;
 	taxYear: number;
 	resident: boolean;
 	special: {
@@ -60,21 +78,16 @@ export interface FormState {
 	nextKey: number;
 }
 
+export function newPeriod(key: string, fromMonth = 1, toMonth = 12): PeriodForm {
+	return { key, fromMonth, toMonth, monthly: null, insurance: 'GROSS', insuranceSalary: null };
+}
+
+export function newExtra(key: string, month = 12): ExtraForm {
+	return { key, month, amount: null, afterLeaving: false };
+}
+
 export function newSource(key: string, name: string): SourceForm {
-	return {
-		key,
-		name,
-		contract: 'LONG',
-		monthly: null,
-		fromMonth: 1,
-		toMonth: 12,
-		insurance: 'GROSS',
-		insuranceSalary: null,
-		region: 'I',
-		bonus: null,
-		bonusMonth: 12,
-		withheld: null
-	};
+	return { key, name, contract: 'LONG', periods: [newPeriod(`${key}p1`)], extras: [], region: 'I', withheld: null };
 }
 
 export function newDependent(key: string, n: number): DependentForm {
@@ -83,7 +96,7 @@ export function newDependent(key: string, n: number): DependentForm {
 
 export function defaultForm(taxYear: number): FormState {
 	return {
-		version: 1,
+		version: 2,
 		taxYear,
 		resident: true,
 		special: {
@@ -105,38 +118,122 @@ export function defaultForm(taxYear: number): FormState {
 	};
 }
 
+// ---------------------------------------------------------------------------
+// Bản 1 (đã có người lưu trong localStorage): đọc được mãi mãi, chuyển sang bản 2.
+// ---------------------------------------------------------------------------
+
+export interface SourceFormV1 {
+	key: string;
+	name: string;
+	contract: 'LONG' | 'SHORT';
+	monthly: number | null;
+	fromMonth: number;
+	toMonth: number;
+	insurance: InsuranceMode;
+	insuranceSalary: number | null;
+	region: WageRegion;
+	bonus: number | null;
+	bonusMonth: number;
+	withheld: number | null;
+}
+
+export type FormStateV1 = Omit<FormState, 'version' | 'sources'> & { version: 1; sources: SourceFormV1[] };
+
+export function migrateForm(f: FormStateV1 | FormState): FormState {
+	if (f.version === 2) return f;
+	return {
+		...f,
+		version: 2,
+		sources: f.sources.map((s) => ({
+			key: s.key,
+			name: s.name,
+			contract: s.contract,
+			region: s.region,
+			withheld: s.withheld,
+			periods: [
+				{
+					key: `${s.key}p1`,
+					fromMonth: s.fromMonth,
+					toMonth: s.toMonth,
+					monthly: s.monthly,
+					insurance: s.insurance,
+					insuranceSalary: s.insuranceSalary
+				}
+			],
+			extras: s.bonus !== null && s.bonus > 0 ? [{ key: `${s.key}e1`, month: s.bonusMonth, amount: s.bonus, afterLeaving: false }] : []
+		}))
+	};
+}
+
+// ---------------------------------------------------------------------------
+// Form → TaxYearCase
+// ---------------------------------------------------------------------------
+
 const mm = (m: number) => String(m).padStart(2, '0');
+const span = (p: { fromMonth: number; toMonth: number }) => [Math.min(p.fromMonth, p.toMonth), Math.max(p.fromMonth, p.toMonth)];
 
 function payments(year: number, s: SourceForm): Payment[] {
 	const out: Payment[] = [];
-	if (s.monthly !== null && s.monthly > 0) {
-		const lo = Math.min(s.fromMonth, s.toMonth);
-		const hi = Math.max(s.fromMonth, s.toMonth);
+	for (const p of s.periods) {
+		if (p.monthly === null || p.monthly <= 0) continue;
+		const [lo, hi] = span(p);
+		const salary = p.insurance === 'GROSS' ? p.monthly : p.insurance === 'OTHER' ? (p.insuranceSalary ?? 0) : 0;
 		for (let m = lo; m <= hi; m++) {
-			const salary = s.insurance === 'GROSS' ? s.monthly : s.insurance === 'OTHER' ? (s.insuranceSalary ?? 0) : 0;
 			out.push({
 				date: `${year}-${mm(m)}-25` as IsoDate,
-				gross: s.monthly,
+				gross: p.monthly,
 				insurance: salary > 0 ? { kind: 'SALARY', salary, region: s.region } : undefined
 			});
 		}
 	}
-	if (s.bonus !== null && s.bonus > 0) {
-		out.push({ date: `${year}-${mm(s.bonusMonth)}-26` as IsoDate, gross: s.bonus });
+	for (const e of s.extras) {
+		if (e.amount === null || e.amount <= 0) continue;
+		out.push({
+			date: `${year}-${mm(e.month)}-26` as IsoDate,
+			gross: e.amount,
+			paidAfterTermination: s.contract === 'LONG' && e.afterLeaving ? true : undefined
+		});
 	}
-	return out;
+	return out.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 }
 
 /** Nguồn có ít nhất một khoản chi trả. Nguồn trống không đi vào core. */
 export function activeSources(f: FormState): SourceForm[] {
-	return f.sources.filter((s) => (s.monthly ?? 0) > 0 || (s.bonus ?? 0) > 0);
+	return f.sources.filter(
+		(s) => s.periods.some((p) => (p.monthly ?? 0) > 0) || s.extras.some((e) => (e.amount ?? 0) > 0)
+	);
+}
+
+/** Lỗi mà người dùng tự sửa được trên form, viết cho người dùng đọc. */
+export function formProblems(f: FormState): string[] {
+	const out: string[] = [];
+	for (const s of activeSources(f)) {
+		const name = s.name.trim() || 'Nơi trả lương';
+		const filled = s.periods.filter((p) => (p.monthly ?? 0) > 0).map(span).sort((a, b) => a[0] - b[0]);
+		for (let i = 1; i < filled.length; i++) {
+			if (filled[i][0] <= filled[i - 1][1]) {
+				out.push(
+					`${name}: khoảng tháng ${filled[i - 1][0]}–${filled[i - 1][1]} và ${filled[i][0]}–${filled[i][1]} trùng nhau. Mỗi tháng chỉ thuộc một khoảng lương.`
+				);
+			}
+		}
+		const lastSalary = filled.length ? filled[filled.length - 1][1] : 0;
+		for (const e of s.extras) {
+			if (s.contract === 'LONG' && e.afterLeaving && (e.amount ?? 0) > 0 && e.month < lastSalary) {
+				out.push(
+					`${name}: khoản trả sau khi nghỉ việc ở tháng ${e.month}, nhưng bạn vẫn nhận lương ở đây đến tháng ${lastSalary}.`
+				);
+			}
+		}
+	}
+	return out;
 }
 
 export function toCase(f: FormState): TaxYearCase {
 	const y = f.taxYear;
 	const incomeSources: IncomeSource[] = activeSources(f).map((s) => ({
 		id: s.key,
-		name: s.name.trim() || 'Nơi trả thu nhập',
+		name: s.name.trim() || 'Nơi trả lương',
 		contractMonths: s.contract === 'LONG' ? 12 : null,
 		claimsPersonalDeduction: f.personalSourceKey === s.key,
 		payments: payments(y, s),
