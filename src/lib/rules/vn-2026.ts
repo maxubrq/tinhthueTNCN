@@ -381,7 +381,7 @@ export const vn2026 = defineRulebook({
 			dependentMonthly: 6_200_000,
 			sourceRefs: [ref('nd-253-2026', 'Điều 70.2'), ref(R, 'Nửa đầu năm 2026 là giai đoạn lai')],
 			status: 'INFERRED',
-			rationale: 'Luật mới áp cho cả năm, nhưng nhiều công ty có lẽ vẫn khấu trừ tháng 1 đến tháng 6 theo biểu cũ. Biết số thật thì bạn nên nhập vào ô Thuế đã khấu trừ.',
+			rationale: 'Luật mới áp cho cả năm, nhưng nhiều công ty có lẽ vẫn khấu trừ tháng 1 đến tháng 6 theo biểu cũ và không tính lại. Nếu công ty đã tính lại, hoặc biết số thật, kết quả sẽ khác: hãy nhập số thật vào ô Thuế đã khấu trừ.',
 			openIssues: ['oi-5']
 		}
 	]

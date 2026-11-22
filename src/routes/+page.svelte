@@ -426,13 +426,13 @@
 			{/if}
 			{#if estimating && practice}
 				<Choice
-					legend="Tháng 1 đến tháng 6/2026, công ty khấu trừ thuế theo"
+					legend="Thuế tháng 1 đến tháng 6/2026 của bạn, tính đến cuối năm, theo biểu nào?"
 					options={[
-						{ value: 'DEFAULT', label: 'Biểu 7 bậc cũ' },
-						{ value: 'NONE', label: 'Biểu 5 bậc mới' }
+						{ value: 'DEFAULT', label: 'Biểu 7 bậc cũ, công ty không tính lại' },
+						{ value: 'NONE', label: 'Biểu 5 bậc mới, hoặc công ty đã tính lại' }
 					]}
 					bind:value={form.practice}
-					hint="Chỉ dùng khi bạn để trống ô Thuế đã khấu trừ. Luật mới áp cho cả năm, nhưng nhiều công ty có lẽ chỉ đổi sang biểu mới từ 1/7/2026. Không chắc thì giữ biểu cũ, rồi tra số thật trên eTax."
+					hint="Luật mới áp cho cả năm 2026, nhưng công ty không bắt buộc tính lại các tháng đã khấu trừ; phần chênh lệch được trả khi quyết toán. Có công ty đã tính lại và trả bạn phần thừa (thường vào lương tháng 7 trở đi): khi đó chọn dòng thứ hai. Không chắc thì giữ dòng đầu, rồi tra số thật trên eTax. Câu này chỉ dùng khi bạn để trống ô Thuế đã khấu trừ."
 				/>
 			{/if}
 			{#if hasShort}
