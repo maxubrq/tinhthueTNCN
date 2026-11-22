@@ -29,7 +29,7 @@ const ins = (salary: number) => ({ kind: 'SALARY', salary, region: 'I' }) as con
 const salary = (months: number[], gross: number): Payment[] =>
 	months.map((m) => ({ date: `2026-${String(m).padStart(2, '0')}-25` as IsoDate, gross, insurance: ins(gross) }));
 
-function c1(esop: number): TaxYearCase {
+function c1(esop: number, bDeducts = false): TaxYearCase {
 	const A: IncomeSource = {
 		id: 'A',
 		name: 'Công ty A',
@@ -44,7 +44,7 @@ function c1(esop: number): TaxYearCase {
 		id: 'B',
 		name: 'Công ty B',
 		contractMonths: 12,
-		claimsPersonalDeduction: false,
+		claimsPersonalDeduction: bDeducts,
 		payments: salary([12], 60 * TR)
 	};
 	return { taxPeriod: 2026, residency: 'RESIDENT', incomeSources: [A, B], dependents: [], claims: {} };
@@ -100,6 +100,33 @@ describe('c1: đổi việc giữa năm có ESOP', () => {
 		expect(r.summary).toContain('2 nơi');
 		// A vẫn có lương thường trong năm, nên điểm mở 18 không dính vào.
 		expect(r.flags.some((f) => f.kind === 'PARAM' && f.openIssues.includes('oi-18'))).toBe(false);
+	});
+});
+
+describe('c1b: B có trừ giảm trừ gia cảnh trong tháng 12 (làm lần lượt)', () => {
+	// Duyệt 22/11/2026. Mặc định của form khi làm lần lượt: mỗi nơi trừ trong tháng của mình.
+	// B khấu trừ 20% × (60 − 5,407 − 15,5) − 3,5 = 4,3186 tr.
+	it('không ESOP, biểu mới: hoàn 9.109.300 đ', () => {
+		const r = assess(rb, c1(0, true), SELF, { practice: 'NONE' });
+		expect(r.withheldBySource.map((w) => w.amount)).toEqual([13_216_000, 4_318_600]);
+		expect(r.annualTax).toBe(8_425_300);
+		expect(r.delta.amount).toBe(-9_109_300);
+	});
+
+	it('ESOP 100 tr: Δ không đổi, hoàn 9.109.300 đ', () => {
+		const r = assess(rb, c1(100 * TR, true), SELF, { practice: 'NONE' });
+		expect(r.withheldBySource.map((w) => w.amount)).toEqual([23_216_000, 4_318_600]);
+		expect(r.delta.amount).toBe(-9_109_300);
+	});
+
+	it('A và B trừ ở hai tháng khác nhau: hợp lệ, không vi phạm "mỗi tháng một nơi"', () => {
+		expect(() => assess(rb, c1(0, true), SELF)).not.toThrow();
+	});
+
+	it('hai nơi cùng trừ giảm trừ trong một tháng: hồ sơ không hợp lệ', () => {
+		const c = c1(0, true);
+		const bad = { ...c, incomeSources: [c.incomeSources[0], { ...c.incomeSources[1], payments: salary([7, 12], 60 * TR) }] };
+		expect(() => assess(rb, bad, SELF)).toThrow(/Tháng 7/);
 	});
 });
 
