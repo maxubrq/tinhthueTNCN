@@ -131,7 +131,9 @@ function fixture() {
 				value: { rule: 'Mẫu', date: '2100-03-31' },
 				sourceRefs: ref,
 				status: 'VERIFIED'
-			}
+			},
+			foreignerExitDeadlineDays: { axis: 'TAX_PERIOD', value: 45, sourceRefs: ref, status: 'VERIFIED' },
+			insurancePayoutOnlyExempt: { axis: 'TAX_PERIOD', value: true, sourceRefs: ref, status: 'VERIFIED' }
 		},
 		withholdingPractices: []
 	});

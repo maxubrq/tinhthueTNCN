@@ -7,7 +7,8 @@ import type { TaxYearCase } from '../src/lib/core/case';
 import { UncoveredDateError, UnsupportedPeriodError } from '../src/lib/core/errors';
 import { resolveByDate, selectRulebook } from '../src/lib/core/resolve';
 import { annualScheduleOf, marginalRate, progressiveTax, quickTable, taxNumerator } from '../src/lib/core/schedule';
-import { assess } from '../src/lib/core/settlement';
+import { assess, type SettlementDelta } from '../src/lib/core/settlement';
+import { decideObligation, type ObligationFacts, type Verdict } from '../src/lib/core/obligation';
 import { rulebookProblems } from '../src/lib/core/validate';
 import { RULEBOOKS } from '../src/lib/rules';
 import type { IsoDate, ProgressiveSchedule } from '../src/lib/rules/schema';
@@ -141,6 +142,51 @@ describe.each(RULEBOOKS.map((rb) => [rb.id, rb] as const))('%s', (_id, rb) => {
 		const r = assess(rb, c, { filing: 'SELF', includeCasual: true });
 		expect(r.deductions).toBe(0);
 		expect(r.annualTax).toBe(progressiveTax({ brackets: [{ upTo: null, rate: rb.nonResident.employmentRate.value }] }, 100e6, ROUND));
+	});
+});
+
+describe.each(RULEBOOKS.map((rb) => [rb.id, rb] as const))('%s: I12 bảng quyết định', (_id, rb) => {
+	it('mọi tổ hợp dữ kiện cho đúng một kết luận hợp lệ, tất định', () => {
+		const cap = rb.settlement.casualIncomeMonthlyAverageCap.value;
+		const deltas: (SettlementDelta | undefined)[] = [undefined, ...[1e6, 50_000, 0, -50_000, -1e6].map(
+			(amount) => ({ amount, direction: amount > 0 ? 'PAY' : amount < 0 ? 'REFUND' : 'NONE', withinSmallThreshold: amount !== 0 && Math.abs(amount) <= 50_000, smallThreshold: 50_000 }) as const
+		)];
+		const valid: Verdict[] = ['NOT_IN_PROGRESSIVE_FLOW', 'MUST_SELF_SETTLE', 'MAY_AUTHORIZE', 'EXEMPT_SMALL_DELTA', 'MAY_SELF_SETTLE_FOR_REFUND', 'NOT_REQUIRED', 'NEEDS_DELTA'];
+		const bools = [false, true];
+		let n = 0;
+		for (const residency of ['RESIDENT', 'NON_RESIDENT'] as const)
+			for (const foreigner of bools)
+				for (const firstYear of bools)
+					for (const foreign of bools)
+						for (const relief of bools)
+							for (const claims of bools)
+								for (const employed of bools)
+									for (const insOnly of bools)
+										for (const employers of [0, 1, 2])
+											for (const casual of [0, cap, cap + 1])
+												for (const delta of deltas) {
+													const f: ObligationFacts = {
+														residency,
+														foreignerContractEnd: foreigner ? `${rb.taxYear}-06-30` : undefined,
+														firstResidentYearBy12Months: firstYear,
+														untaxedForeignIncome: foreign,
+														wantsHardshipRelief: relief,
+														hasSelfOnlyClaims: claims,
+														employedAtSettlement: employed,
+														onlyInsurancePayouts: insOnly,
+														progressiveEmployers: employers,
+														casualMonthlyAverage: casual
+													};
+													const r = decideObligation(rb, f, delta);
+													expect(valid).toContain(r.verdict);
+													expect(r.step).toBeGreaterThanOrEqual(0);
+													expect(r.step).toBeLessThanOrEqual(8);
+													expect(decideObligation(rb, f, delta)).toEqual(r);
+													if (r.canAuthorize) expect(r.verdict).toBe('MAY_AUTHORIZE');
+													if (r.verdict === 'NEEDS_DELTA') expect(delta).toBeUndefined();
+													n++;
+												}
+		expect(n).toBe(2 * 2 ** 7 * 3 * 3 * 6);
 	});
 });
 

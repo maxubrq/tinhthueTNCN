@@ -292,6 +292,10 @@ export interface Rulebook<S extends string = string, O extends string = string> 
 		readonly casualIncomeMonthlyAverageCap: PeriodParam<Dong, S, O>;
 		readonly individualDeadline: PeriodParam<Deadline, S, O>;
 		readonly organizationDeadline: PeriodParam<Deadline, S, O>;
+		/** Người nước ngoài kết thúc làm việc tại Việt Nam: hạn tự quyết toán, số ngày sau khi hợp đồng kết thúc. */
+		readonly foreignerExitDeadlineDays: PeriodParam<number, S, O>;
+		/** Chỉ có khoản chi trả bảo hiểm đã bị khấu trừ 10% thì không phải quyết toán. */
+		readonly insurancePayoutOnlyExempt: PeriodParam<boolean, S, O>;
 	};
 
 	/** Giả định thực hành mặc định cho kỳ này (ví dụ điểm mở 5). Có thể rỗng. */

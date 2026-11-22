@@ -335,6 +335,19 @@ export const vn2026 = defineRulebook({
 			value: { rule: 'Ngày cuối tháng thứ 3 sau khi kết thúc năm.', date: '2027-03-31' },
 			sourceRefs: [ref('nd-252-2026'), ref(R, 'Hạn nộp')],
 			status: 'VERIFIED'
+		},
+		foreignerExitDeadlineDays: {
+			axis: 'TAX_PERIOD',
+			value: 45,
+			sourceRefs: [ref('nd-252-2026', 'Điều 10.5d'), ref(R, 'Câu hỏi (1), bước 1')],
+			status: 'VERIFIED'
+		},
+		insurancePayoutOnlyExempt: {
+			axis: 'TAX_PERIOD',
+			value: true,
+			sourceRefs: [ref(R, 'Câu hỏi (1), bước 8')],
+			status: 'INFERRED',
+			rationale: 'Nghiên cứu ghi đây là quy định 2025; chưa thấy văn bản 2026 xác nhận.'
 		}
 	},
 
