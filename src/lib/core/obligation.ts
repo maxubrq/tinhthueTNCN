@@ -188,7 +188,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 3,
 			verdict: 'MUST_SELF_SETTLE',
 			canAuthorize: false,
-			summary: 'Bạn có thu nhập từ nước ngoài hoặc từ tổ chức quốc tế chưa bị khấu trừ thuế, nên phải tự quyết toán.',
+			summary: 'Bạn có tiền lương, tiền công từ nước ngoài hoặc từ tổ chức quốc tế chưa bị khấu trừ thuế, nên phải tự quyết toán.',
 			deadline: selfDeadline,
 			filingOffice: office,
 			params: [individual.use],

@@ -219,7 +219,8 @@
 						<label class="date">Ngày hợp đồng kết thúc <input type="date" min="{form.taxYear}-01-01" max="{form.taxYear}-12-31" bind:value={form.special.foreignerContractEnd} /></label>
 					{/if}
 					<label><input type="checkbox" bind:checked={form.special.firstResidentYear} /> Đây là năm đầu tiên cư trú, tính theo 12 tháng liên tục chứ không theo năm dương lịch</label>
-					<label><input type="checkbox" bind:checked={form.special.foreignIncome} /> Có thu nhập từ nước ngoài hoặc từ tổ chức quốc tế mà chưa bị khấu trừ thuế</label>
+					<label><input type="checkbox" bind:checked={form.special.foreignIncome} /> Có tiền lương, tiền công từ nước ngoài hoặc từ tổ chức quốc tế mà chưa bị khấu trừ thuế</label>
+					<p class="hint checks-note">Chỉ tính tiền lương, tiền công. Tiền bán app trên App Store hay Google Play là thu nhập kinh doanh, không đánh dấu ô này.</p>
 					<label><input type="checkbox" bind:checked={form.special.hardship} /> Muốn xin giảm thuế vì thiên tai hay bệnh hiểm nghèo</label>
 					<label><input type="checkbox" bind:checked={form.special.insuranceOnly} /> Thu nhập duy nhất là khoản chi trả bảo hiểm đã bị khấu trừ 10%</label>
 				</div>
@@ -227,6 +228,14 @@
 		</Section>
 
 		<Section number="02" title="Thu nhập" lede="Khai từng nơi trả lương, tiền công cho bạn trong năm. Lấy số trên phiếu lương, trước khi trừ bảo hiểm và thuế.">
+			<div class="skip">
+				<p class="label">Không nhập vào đây</p>
+				<ul>
+					<li>Trợ cấp thai sản, ốm đau, thất nghiệp do BHXH trả: không chịu thuế.</li>
+					<li>Thu nhập kinh doanh, ví dụ tiền bán app trên App Store, Google Play: tính thuế riêng theo diện cá nhân kinh doanh; doanh thu đến 1 tỷ đồng/năm không chịu thuế.</li>
+					<li>Cổ tức, tiền bán chứng khoán, trúng thưởng: đã tính thuế riêng khi nhận, không vào quyết toán lương.</li>
+				</ul>
+			</div>
 			{#each form.sources as s, i (s.key)}
 				<fieldset class="source">
 					<legend class="source-head">
@@ -685,6 +694,17 @@
 		display: grid;
 		gap: var(--canon-space-3, 0.5rem);
 		padding-top: var(--canon-space-1, 1.5rem);
+	}
+	.checks-note {
+		padding-left: calc(1em + var(--canon-space-3, 0.5rem));
+	}
+	.skip {
+		border-left: var(--canon-rule-strong, 2px) solid var(--canon-ink, #111);
+		padding-left: var(--canon-space-3, 0.5rem);
+		max-width: var(--canon-measure, 70ch);
+	}
+	.skip ul {
+		padding-left: 1.2em;
 	}
 	.checks .date {
 		display: grid;
