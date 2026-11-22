@@ -13,21 +13,30 @@ Giao tiếp với chủ dự án bằng tiếng Việt, xưng "mình", gọi "b�
 
 | File | Nội dung |
 |---|---|
-| `docs/research/thue-tncn-2026.md` | Nghiên cứu luật: tham số năm 2025 và 2026, bảng quyết định, công thức, 17 điểm mở. **Nguồn số liệu duy nhất cho Rulebook.** |
-| `docs/design/kien-truc-v0.md` | DDD, ngôn ngữ chung, invariants I1–I16, ADR-001 đến ADR-007 |
+| `docs/research/thue-tncn-2026.md` | Nghiên cứu luật: tham số năm 2025 và 2026, bảng quyết định, công thức, 18 điểm mở. **Nguồn số liệu duy nhất cho Rulebook.** |
+| `docs/design/kien-truc-v0.md` | DDD, ngôn ngữ chung, invariants I1–I17, ADR-001 đến ADR-007 |
 | `docs/design/adr-008-mot-trang-svelte.md` | Rút gọn thành một trang Svelte tĩnh. **Thay ADR-003 và mục C4 của v0.** |
 | `docs/design/adr-009-don-vi-tien.md` | Đơn vị nhập và hiển thị tiền |
+| `docs/design/adr-010-co-che-trong-core.md` | Những gì core giữ trong code: thứ tự bảng quyết định, làm tròn cơ chế, khấu trừ theo từng lần chi |
+| `docs/design/adr-011-dong-thoi-gian-noi-tra-luong.md` | Form bản 2: khoảng lương, khoản trả một lần, khoản trả sau khi nghỉ việc; chuyển hồ sơ đã lưu |
+| `docs/design/adr-012-diem-mo-la-tham-so.md` | Cách hiểu tạm cho điểm mở pháp lý là tham số Rulebook có cờ |
+| `docs/design/adr-013-he-thiet-ke-canon.md` | Hệ thiết kế Canon (Modern Swiss) cho trang |
 | `docs/frameworks/` | Tiêu chuẩn A v2 và SFIM v2: chuẩn chất lượng của chủ dự án. Đặt hai file vào đây nếu thư mục còn trống. |
 
 ## Kiến trúc (tóm tắt ADR-008)
 
 ```
-src/lib/core/    TS thuần, KHÔNG import Svelte, không gọi mạng, không đọc đồng hồ. Test bằng vitest.
-src/lib/rules/   schema.ts + vn-2025.ts + vn-2026.ts (object TS có kiểu, không dùng JSON)
-src/lib/ui/      amount.ts (đã xong): parse và format tiền theo đơn vị
-src/routes/+page.svelte   một trang: phân luồng → nhập → kết quả
-tests/golden/    ca vàng theo từng Rulebook
-tests/invariants.test.ts
+src/lib/core/        TS thuần, KHÔNG import Svelte, không gọi mạng, không đọc đồng hồ. Test bằng vitest.
+                     money, resolve, schedule, insurance, income, deductions, withholding,
+                     settlement (câu 2), obligation (câu 1), levers (câu 3), trace, validate, case, errors
+src/lib/rules/       schema.ts, vn-2025.ts, vn-2026.ts, open-issues.ts, index.ts (RULEBOOKS)
+src/lib/ui/          amount.ts (đơn vị tiền), form.ts (form → TaxYearCase), compute.ts, describe.ts, storage.ts
+src/lib/components/  AmountField, Choice, Money, Section (ADR-013)
+src/lib/styles/      canon.css: token của hệ thiết kế
+src/routes/+page.svelte   một trang: hoàn cảnh → thu nhập → giảm trừ; kết luận cập nhật khi gõ
+tests/golden/        ca vàng theo từng Rulebook, và ca c1 (đổi việc có ESOP)
+tests/design/        vn-2027 giả: phép thử "năm mới không sửa core". Không phát hành.
+tests/invariants.test.ts   I3, I6, I7, I8, I9, I12 trên mọi Rulebook
 ```
 SvelteKit dùng `adapter-static`, prerender, không backend, không tài khoản.
 
@@ -45,31 +54,34 @@ SvelteKit dùng `adapter-static`, prerender, không backend, không tài khoản
 - **Luật khác thực hành.** Số đã khấu trừ là dữ kiện người dùng nhập (`provenance: 'USER'`). Nếu app mô phỏng thì gắn `'SIMULATED'` và hiện nhãn giả định.
 - **Mọi con số có dấu vết** về input và điều khoản. Số nào dựa trên tham số `INFERRED` hoặc `PENDING` thì hiện cờ ngay cạnh con số.
 - **Riêng tư.** Không đưa số tiền vào URL, query string hay analytics. Mặc định không lưu gì. Chỉ lưu localStorage khi người dùng bấm "Lưu trên máy này". Có nút xóa một chạm.
+- **Một nơi trả lương là một công ty (I17)**, dù nhập bao nhiêu khoảng lương. Khoản công ty trả sau khi đã nghỉ việc luôn được gộp, không tính là vãng lai.
+- **Hồ sơ đã lưu luôn mở được.** Đổi hình dạng `FormState` thì tăng `version` và thêm bước trong `migrateForm`. Không xóa bước cũ.
 
 ## Thêm luật năm mới
 
-Thêm `src/lib/rules/vn-YYYY.ts` và ca vàng trong `tests/golden/`, rồi deploy. Mỗi tham số mới cần `sourceRefs` và `status: 'VERIFIED' | 'INFERRED' | 'PENDING'`.
+Thêm `src/lib/rules/vn-YYYY.ts`, đưa vào `RULEBOOKS` trong `rules/index.ts`, viết ca vàng trong `tests/golden/`, rồi deploy. Mỗi tham số mới cần `sourceRefs` và `status: 'VERIFIED' | 'INFERRED' | 'PENDING'`. Mỗi tham số phải được khai lại cho năm mới, kể cả khi giá trị không đổi.
+
+- Điểm mở mới: ghi vào bảng "Điểm mở" của `docs/research` trước, rồi vào `rules/open-issues.ts`. Nếu cách hiểu tạm làm đổi nhánh tính thì nó là một tham số Rulebook có cờ (ADR-012), không viết cứng trong core.
+- Ca vàng lấy từ số tính tay. Nếu core cho ra khác, **dừng lại và báo chủ dự án** trước khi sửa test cho khớp. Ca vàng không lấy từ nghiên cứu (ví dụ c1) phải được chủ dự án duyệt số trước khi commit.
+- Luật năm mới đổi cơ chế chứ không chỉ đổi số: xem trước ba mục trong ADR-010.
 
 **Ca vàng của năm cũ không bao giờ được đổi kết quả.** Nếu phải đổi thì đó là sửa sai: ghi lý do vào commit message và vào `docs/design/`.
 
-## Việc tiếp theo, theo thứ tự
+## Trạng thái (22/11/2026)
 
-1. **Dựng khung dự án:** SvelteKit + TypeScript + `adapter-static` + vitest. Giữ nguyên `src/lib/ui/amount.ts` và test của nó (13 test, phải xanh).
-2. **Viết `rules/schema.ts`,** rồi biểu diễn đầy đủ năm 2025 và 2026 từ `docs/research`.
-3. **Viết core:** `money`, `resolve`, `schedule`, `insurance`, `deductions`, `settlement`.
-4. **Viết ca vàng,** lấy từ nghiên cứu, mọi số tính bằng đồng:
-   - Hai nơi lương 30 và 20 triệu/tháng, năm 2026: thiếu khoảng 11,4 triệu/năm. Nếu nơi B khấu trừ 10% thì thiếu khoảng 5,4 triệu.
-   - TN 9,5 triệu/tháng, thêm thưởng 50 triệu vào tháng 12: được hoàn khoảng 3,2 triệu.
-   - Chênh lệch biểu 7 bậc so với 5 bậc theo tháng: TN 10 → 0,25; TN 20 → 0,85; TN 40 → 2,25; TN 80 → 3,65; TN > 100 → 4,65 (triệu).
-   - Ranh giới bậc 2026: TN 30 → thuế 2,5; TN 60 → 8,5; TN 100 → 20,5 (triệu/tháng).
-   - Thu nhập sau bảo hiểm 30 triệu/tháng, không người phụ thuộc: năm 2025 khoảng 25,8 triệu, năm 2026 khoảng 11,4 triệu. Ở mức 50 triệu: 78 và 40,8 triệu.
+Đã xong: khung dự án; Rulebook 2025 và 2026; core trả lời cả ba câu hỏi; ca vàng (gồm c1); phép thử `vn-2027` giả; trang một màn theo ADR-013; form bản 2 theo ADR-011. Chưa deploy.
 
-   Các số "khoảng" là số tính tay. Nếu core cho ra khác, **dừng lại và báo chủ dự án** trước khi sửa test cho khớp.
-5. **Phép thử thiết kế:** viết thử một `vn-2027.ts` giả (đổi biểu và một ngưỡng giữa năm) mà không sửa dòng code nào trong core.
-6. Sau đó mới làm `obligation` (bảng quyết định), `levers`, rồi đến UI.
+## Việc còn mở
+
+1. **Giảm cờ bằng cách xác minh tham số:** quy tắc làm tròn (`INFERRED`), trần BHTN vùng II–IV và mọi tham số `PENDING` của năm 2025. Xác minh xong thì chuyển `VERIFIED`, tăng `revision` và ghi `changelog`.
+2. **Theo dõi công văn quyết toán năm 2026** (thường ra tháng 1–3/2027): điểm mở 6, 8, 13, 18.
+3. **Kiểm giao diện:** 375 px, chỉ dùng bàn phím, trình đọc màn hình. Tự host font `@fontsource/be-vietnam-pro`.
+4. **Chưa hỗ trợ:** thuế đã nộp ở nước ngoài; năm cư trú đầu tiên theo 12 tháng liên tục; ESOP định giá theo NĐ 253; thu nhập kinh doanh (ngoài phạm vi v1); khung phạt nộp chậm (cần thêm bảng vào schema); mẫu biểu (điểm mở 4).
 
 ## Quy ước
 
 - Tên miền dùng đúng ngôn ngữ chung trong `kien-truc-v0.md` mục 3.1: `TaxPeriod`, `IncomeSource`, `WithheldAmount`, `SettlementDelta`, `Rulebook`, `OpenIssue`, `Scenario`.
 - Nhập số kiểu Việt Nam: dấu phẩy là phần lẻ, dấu chấm phân cách nghìn. Cạnh mỗi ô nhập luôn hiện "= … đ".
 - Kết quả mặc định hiển thị theo triệu, 1 chữ số thập phân. Số khác 0 không bao giờ hiện thành "0,0".
+- Alias `#lib` là subpath import trong `package.json`, ánh xạ nguyên đường dẫn: import module TS phải ghi đuôi, ví dụ `#lib/ui/form.ts`. `$lib` không dùng trong project này.
+- Câu chữ gửi người dùng (kể cả `rationale` trong Rulebook và thông điệp của core) viết cho người dùng đọc: không dùng chữ nội bộ như "kỳ", "nguồn", "nghiên cứu", "điểm mở"; không em dash. Core không định dạng tiền; số tiền đi qua trường riêng để UI định dạng.

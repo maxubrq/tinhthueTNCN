@@ -113,6 +113,7 @@ Lớp chống hỏng: UI chuyển câu trả lời thành một `TaxYearCase` ch
 | I14 | Kết quả dựa trên tham số chưa xác minh phải hiện cờ | Lan truyền cờ |
 | I15 | Dữ liệu không rời máy; xóa được bằng một chạm | Không có backend |
 | I16 | Luật đổi thì không âm thầm đổi kết quả đã lưu; hiện phần chênh lệch | So `rulebookId` |
+| I17 | Một nơi trả lương là một công ty, dù nhập bao nhiêu khoảng lương hay khoản trả một lần (thêm 22/11/2026, ADR-011) | Property test trong `src/lib/ui/form.test.ts` |
 
 ## 5. ADR
 
@@ -121,7 +122,8 @@ Lớp chống hỏng: UI chuyển câu trả lời thành một `TaxYearCase` ch
 - **ADR-002 Hai trục hiệu lực, cộng `knownAsOf`.**
   - Phương án đã bỏ: khóa theo năm (không biểu diễn được ngưỡng 5 triệu từ 01/7/2026); một trục `validFrom` (không biểu diễn được hồi tố về 01/01).
 - **ADR-003** đã bị thay bởi ADR-008.
-- **ADR-004 Tiền là số nguyên đồng; làm tròn là tham số của Rulebook.**
+- **ADR-004 Tiền là số nguyên đồng; làm tròn là tham số của Rulebook.** Ngoại lệ có chủ đích cho ba bước cơ chế: xem ADR-010 mục 2.
 - **ADR-005 Ca vàng và validator là cổng merge bắt buộc.** Ca của năm cũ chạy lại mãi mãi.
 - **ADR-006 Luật, dữ kiện, thực hành tách nhau; điểm mở là thực thể hạng nhất.** Ví dụ điểm mở #5 có nút chọn "T1–T6 theo biểu 7 bậc / 5 bậc / nhập số thực tế".
-- **ADR-007 Kịch bản là hạng nhất:** luôn tính song song ủy quyền và tự quyết toán, gộp và không gộp vãng lai.
+- **ADR-007 Kịch bản là hạng nhất:** luôn tính song song ủy quyền và tự quyết toán, gộp và không gộp vãng lai. Khoản trả sau khi nghỉ việc luôn được gộp (ADR-011).
+- ADR-008 trở đi nằm ở các file `docs/design/adr-0xx-*.md`.
