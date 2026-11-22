@@ -18,6 +18,8 @@
 	let { sources, overlap }: Props = $props();
 	const uid = $props.id();
 	const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
+	/** Màn hẹp chỉ hiện số của tháng mốc (và tháng đánh dấu đỏ) để số không dính nhau. */
+	const ANCHORS = [1, 3, 6, 9, 12];
 
 	interface Cell {
 		period: number | null; // chỉ số khoảng lương, để xen kẽ sắc độ
@@ -49,7 +51,7 @@
 			<tr>
 				<th scope="col" class="name"><span class="sr">Nơi trả lương</span></th>
 				{#each MONTHS as m (m)}
-					<th scope="col" class:hot={overlap.includes(m)}>{m}</th>
+					<th scope="col" class:hot={overlap.includes(m)} class:minor={!ANCHORS.includes(m)}>{m}</th>
 				{/each}
 			</tr>
 		</thead>
@@ -177,6 +179,9 @@
 	@media (max-width: 40rem) {
 		.name {
 			width: 3rem;
+		}
+		thead th.minor:not(.hot) {
+			color: transparent;
 		}
 		.full {
 			position: absolute;

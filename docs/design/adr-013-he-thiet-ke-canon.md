@@ -28,4 +28,5 @@
 ## Hệ quả
 - Font chưa tự host: trang dùng Be Vietnam Pro hoặc Inter nếu máy có sẵn, không có thì dùng font hệ thống. Tự host `@fontsource/be-vietnam-pro` là việc còn mở.
 - Cờ ※ dày khi nhiều tham số còn `INFERRED`. Cách giảm là xác minh tham số, không phải giấu cờ.
-- Đã kiểm thật trên Chrome ở 1440 px và 500 px; chưa kiểm ở 375 px.
+- Đã kiểm thật trên Chrome ở 1440 px và 500 px, và trong iframe rộng 390 px: chân trang không bị thanh dính che, không cuộn ngang, dòng thời gian vừa khít. Chưa kiểm trên điện thoại thật.
+- Thanh dính ở đáy: trang đo chiều cao thật của thanh và chừa đúng chừng đó cộng hai dòng ở chân trang; thanh tránh vùng thanh điều hướng của iPhone (`viewport-fit=cover`, `safe-area-inset`).

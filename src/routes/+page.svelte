@@ -44,6 +44,8 @@
 	let view: 'SELF' | 'AUTHORIZED' | null = $state(null);
 	let saved: storage.Saved | null = $state(null);
 	let saveNote = $state('');
+	/** Chiều cao thật của thanh kết quả dính ở đáy (điện thoại), để chân trang không bị che. */
+	let jumpHeight = $state(0);
 
 	const rb = $derived(RULEBOOKS.find((r) => r.taxYear === form.taxYear) ?? RULEBOOKS[RULEBOOKS.length - 1]);
 	const result = $derived(compute(form));
@@ -221,7 +223,7 @@
 	{/if}
 {/snippet}
 
-<div class="page">
+<div class="page" style:--jump-h="{jumpHeight}px">
 	<header class="masthead">
 		<p class="brand"><strong>Tính thuế TNCN</strong><span>Tính trên máy bạn. Không gửi số nào đi.</span></p>
 		<h1>Quyết toán thuế thu nhập cá nhân năm {form.taxYear}</h1>
@@ -663,7 +665,7 @@
 
 	{#if primary}
 		<!-- Trạng thái: Δ hiện tại, cho điện thoại khi Kết luận nằm dưới phần nhập. Neo không mang số. -->
-		<a class="jump" href="#ket-luan">
+		<a class="jump" href="#ket-luan" bind:offsetHeight={jumpHeight}>
 			<span>{deltaLabel(primary.a.delta.amount)} <strong><Money value={primary.a.delta.amount} {unit} absolute /></strong></span>
 			<span>Xem kết luận ↓</span>
 		</a>
@@ -683,7 +685,8 @@
 		display: grid;
 		grid-template-columns: repeat(var(--canon-cols, 4), minmax(0, 1fr));
 		column-gap: var(--canon-gutter, 1.5rem);
-		padding: 0 var(--canon-margin, 1.5rem);
+		padding: 0 max(var(--canon-margin, 1.5rem), env(safe-area-inset-right, 0px)) 0
+			max(var(--canon-margin, 1.5rem), env(safe-area-inset-left, 0px));
 		max-width: 100rem;
 		margin: 0 auto;
 	}
@@ -1061,15 +1064,18 @@
 		bottom: 0;
 		z-index: 2;
 		display: flex;
+		flex-wrap: wrap;
 		justify-content: space-between;
-		gap: var(--canon-gutter, 1.5rem);
+		gap: 0 var(--canon-gutter, 1.5rem);
 		padding: var(--canon-space-3, 0.5rem) var(--canon-margin, 1.5rem);
+		padding-bottom: calc(var(--canon-space-3, 0.5rem) + env(safe-area-inset-bottom, 0px));
 		background: var(--canon-ink, #111);
 		color: var(--canon-paper, #fff);
 		text-decoration: none;
 	}
+	/* Chừa đúng chiều cao thanh dính, cộng hai dòng để chân trang đọc được trọn. */
 	.foot {
-		margin-bottom: var(--canon-space-2, 3rem);
+		margin-bottom: calc(var(--jump-h, 0px) + var(--canon-space-2, 3rem));
 	}
 
 	@media (min-width: 64rem) {
