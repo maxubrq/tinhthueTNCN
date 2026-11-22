@@ -77,6 +77,7 @@ Thêm `src/lib/rules/vn-YYYY.ts`, đưa vào `RULEBOOKS` trong `rules/index.ts`,
 2. **Theo dõi công văn quyết toán năm 2026** (thường ra tháng 1–3/2027): điểm mở 6, 8, 13, 18.
 3. **Kiểm giao diện:** 375 px, chỉ dùng bàn phím, trình đọc màn hình. Tự host font `@fontsource/be-vietnam-pro`.
 4. **Chưa hỗ trợ:** thuế đã nộp ở nước ngoài; năm cư trú đầu tiên theo 12 tháng liên tục; ESOP định giá theo NĐ 253; thu nhập kinh doanh (ngoài phạm vi v1); khung phạt nộp chậm (cần thêm bảng vào schema); mẫu biểu (điểm mở 4).
+5. **Từ lượt soát của chuyên gia thuế:** khi ước tính số đã khấu trừ, app chưa trừ hưu trí tự nguyện theo tháng; chưa có ô riêng cho tiền làm thêm giờ, tiền ăn ca (người dùng phải tự trừ khoản được miễn). Đối chiếu TT 87/2026 cho trợ cấp BHXH và quy tắc giảm trừ một nơi mỗi tháng.
 
 ## Quy ước
 
