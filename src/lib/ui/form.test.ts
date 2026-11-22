@@ -90,6 +90,16 @@ describe('dòng thời gian của một nơi trả lương', () => {
 		expect(r.comparison.authorized?.delta.direction).toBe('REFUND');
 	});
 
+	it('chỉ một nơi trả lương: không hỏi nơi giảm trừ, nơi đó tự trừ khi hợp đồng từ 3 tháng', () => {
+		const f = form((f) => {
+			f.sources[0].periods = [period(1, 12, 25 * TR)];
+			f.personalSourceKey = null; // giá trị cũ còn sót, trang không còn hỏi
+		});
+		expect(toCase(f).incomeSources[0].claimsPersonalDeduction).toBe(true);
+		f.sources[0].contract = 'SHORT';
+		expect(toCase(f).incomeSources[0].claimsPersonalDeduction).toBe(false);
+	});
+
 	it('tăng lương giữa năm: hai khoảng liền nhau, mỗi khoảng một mức lương', () => {
 		const f = form((f) => {
 			f.sources[0].periods = [period(1, 6, 20 * TR), period(7, 12, 30 * TR)];

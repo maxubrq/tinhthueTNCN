@@ -231,11 +231,13 @@ export function formProblems(f: FormState): string[] {
 
 export function toCase(f: FormState): TaxYearCase {
 	const y = f.taxYear;
-	const incomeSources: IncomeSource[] = activeSources(f).map((s) => ({
+	const active = activeSources(f);
+	const incomeSources: IncomeSource[] = active.map((s) => ({
 		id: s.key,
 		name: s.name.trim() || 'Nơi trả lương',
 		contractMonths: s.contract === 'LONG' ? 12 : null,
-		claimsPersonalDeduction: f.personalSourceKey === s.key,
+		// Chỉ một nơi trả lương thì trang không hỏi: nơi đó trừ giảm trừ bản thân nếu hợp đồng từ 3 tháng.
+		claimsPersonalDeduction: active.length === 1 ? s.contract === 'LONG' : f.personalSourceKey === s.key,
 		payments: payments(y, s),
 		withheld: s.withheld === null ? undefined : { amount: s.withheld, provenance: 'USER' }
 	}));

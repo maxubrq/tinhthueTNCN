@@ -388,13 +388,16 @@
 			{/each}
 			<button type="button" class="add" onclick={addSource}>Thêm nơi trả lương</button>
 
-			{#if activeSources(form).length > 0}
+			{#if activeSources(form).length >= 2 && estimating}
+				<!-- Chỉ dùng để ước tính số đã khấu trừ hằng tháng; quyết toán năm luôn trừ đủ 12 tháng. -->
 				<Choice
-					legend="Bạn đăng ký giảm trừ gia cảnh ở"
+					legend="Mỗi tháng, nơi nào trừ trước {capText(rb.deductions.taxpayerMonthly.value)} cho bạn rồi mới tính thuế?"
 					options={[...activeSources(form).map((s) => ({ value: s.key as string | null, label: s.name || 'Nơi trả lương' })), { value: null, label: 'Không nơi nào' }]}
 					bind:value={form.personalSourceKey}
-					hint={`Chỉ được đăng ký ở một nơi. Mỗi tháng, nơi đó trừ ${capText(rb.deductions.taxpayerMonthly.value)} cho bản thân bạn trước khi tính thuế.`}
+					hint="Luật cho mỗi người trừ khoản này khỏi lương trước khi tính thuế, gọi là giảm trừ bản thân. Làm nhiều nơi thì chỉ một nơi được trừ, thường là nơi làm chính; xem dòng giảm trừ trên phiếu lương. Câu này chỉ giúp app ước tính số thuế đã bị khấu trừ. Khi quyết toán năm, bạn luôn được trừ đủ 12 tháng."
 				/>
+			{/if}
+			{#if activeSources(form).length > 0}
 				<Choice
 					legend="Lúc quyết toán, bạn đang làm ở"
 					options={[...longSources.map((s) => ({ value: s.key as string | null, label: s.name || 'Nơi trả lương' })), { value: null, label: 'Đã nghỉ, không còn làm' }]}
