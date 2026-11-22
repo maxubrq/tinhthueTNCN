@@ -133,7 +133,8 @@ function fixture() {
 				status: 'VERIFIED'
 			},
 			foreignerExitDeadlineDays: { axis: 'TAX_PERIOD', value: 45, sourceRefs: ref, status: 'VERIFIED' },
-			insurancePayoutOnlyExempt: { axis: 'TAX_PERIOD', value: true, sourceRefs: ref, status: 'VERIFIED' }
+			insurancePayoutOnlyExempt: { axis: 'TAX_PERIOD', value: true, sourceRefs: ref, status: 'VERIFIED' },
+			postTerminationPaymentCountsAsEmployer: { axis: 'TAX_PERIOD', value: true, sourceRefs: ref, status: 'VERIFIED' }
 		},
 		withholdingPractices: []
 	});

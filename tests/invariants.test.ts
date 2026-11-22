@@ -164,6 +164,7 @@ describe.each(RULEBOOKS.map((rb) => [rb.id, rb] as const))('%s: I12 báº£ng quyáº
 									for (const insOnly of bools)
 										for (const employers of [0, 1, 2])
 											for (const casual of [0, cap, cap + 1])
+											for (const postOnly of [0, 1])
 												for (const delta of deltas) {
 													const f: ObligationFacts = {
 														residency,
@@ -175,7 +176,9 @@ describe.each(RULEBOOKS.map((rb) => [rb.id, rb] as const))('%s: I12 báº£ng quyáº
 														employedAtSettlement: employed,
 														onlyInsurancePayouts: insOnly,
 														progressiveEmployers: employers,
-														casualMonthlyAverage: casual
+														casualMonthlyAverage: casual,
+														postTerminationOnlyEmployers: postOnly,
+														postTerminationOnlyMonthlyAverage: postOnly ? 2_000_000 : 0
 													};
 													const r = decideObligation(rb, f, delta);
 													expect(valid).toContain(r.verdict);
@@ -186,7 +189,7 @@ describe.each(RULEBOOKS.map((rb) => [rb.id, rb] as const))('%s: I12 báº£ng quyáº
 													if (r.verdict === 'NEEDS_DELTA') expect(delta).toBeUndefined();
 													n++;
 												}
-		expect(n).toBe(2 * 2 ** 7 * 3 * 3 * 6);
+		expect(n).toBe(2 * 2 ** 7 * 3 * 3 * 2 * 6);
 	});
 });
 

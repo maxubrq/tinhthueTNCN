@@ -6,7 +6,8 @@
  *    nộp thuế đăng ký. Nếu ngày chi trả nằm trong một giả định thực hành của Rulebook
  *    (ví dụ T1–T6/2026 theo biểu 7 bậc, điểm mở 5) và người dùng chọn 'DEFAULT', dùng
  *    biểu và mức giảm trừ của giả định đó.
- *  - Nguồn khấu trừ cố định: thuế suất cố định trên mỗi lần chi từ ngưỡng trở lên.
+ *  - Nguồn khấu trừ cố định, và mọi lần chi sau khi đã nghỉ việc: thuế suất cố định trên mỗi
+ *    lần chi từ ngưỡng trở lên.
  *
  * Mô phỏng không trừ hưu trí tự nguyện theo tháng: số thực tế có thể thấp hơn.
  */
@@ -67,8 +68,13 @@ export function simulateWithholding(
 	const rounding = resolveByPeriod('rounding', rb.rounding);
 	uses.push(rounding.use);
 
-	if (regime === 'FLAT') {
-		for (const sm of months.filter((m) => m.sourceIndex === sourceIndex)) {
+	const lawSchedule = resolveByPeriod('schedules.monthly', rb.schedules.monthly);
+	const lawTaxpayer = resolveByPeriod('deductions.taxpayerMonthly', rb.deductions.taxpayerMonthly);
+	const lawDependent = resolveByPeriod('deductions.dependentMonthly', rb.deductions.dependentMonthly);
+
+	for (const sm of months.filter((m) => m.sourceIndex === sourceIndex)) {
+		// Thuế suất cố định: nguồn không có hợp đồng từ 3 tháng, hoặc lần chi sau khi đã nghỉ việc.
+		if (regime === 'FLAT' || sm.afterTermination) {
 			let amount = 0;
 			let base = 0;
 			for (const j of sm.paymentIndexes) {
@@ -82,37 +88,33 @@ export function simulateWithholding(
 				}
 			}
 			out.push({ month: sm.month, taxBase: base, amount, practiceId: null });
+			continue;
 		}
-	} else {
-		const lawSchedule = resolveByPeriod('schedules.monthly', rb.schedules.monthly);
-		const lawTaxpayer = resolveByPeriod('deductions.taxpayerMonthly', rb.deductions.taxpayerMonthly);
-		const lawDependent = resolveByPeriod('deductions.dependentMonthly', rb.deductions.dependentMonthly);
-		for (const sm of months.filter((m) => m.sourceIndex === sourceIndex)) {
-			const practice = practiceAt(rb, sm.lastDate, choice);
-			let deduction = 0;
-			if (source.claimsPersonalDeduction) {
-				const deps = c.dependents.filter(
-					(d) => d.fromMonth <= sm.month && sm.month <= d.toMonth && d.registeredOn <= sm.lastDate
-				).length;
-				if (practice) {
-					deduction = practice.taxpayerMonthly + deps * practice.dependentMonthly;
-				} else {
-					uses.push(lawTaxpayer.use);
-					if (deps > 0) uses.push(lawDependent.use);
-					deduction = lawTaxpayer.value + deps * lawDependent.value;
-				}
+
+		const practice = practiceAt(rb, sm.lastDate, choice);
+		let deduction = 0;
+		if (source.claimsPersonalDeduction) {
+			const deps = c.dependents.filter(
+				(d) => d.fromMonth <= sm.month && sm.month <= d.toMonth && d.registeredOn <= sm.lastDate
+			).length;
+			if (practice) {
+				deduction = practice.taxpayerMonthly + deps * practice.dependentMonthly;
+			} else {
+				uses.push(lawTaxpayer.use);
+				if (deps > 0) uses.push(lawDependent.use);
+				deduction = lawTaxpayer.value + deps * lawDependent.value;
 			}
-			if (practice) uses.push(practiceUse(practice));
-			else uses.push(lawSchedule.use);
-			const taxBase = Math.max(0, sm.taxableIncome - sm.insurance - deduction);
-			const schedule = practice ? practice.monthlySchedule : lawSchedule.value;
-			out.push({
-				month: sm.month,
-				taxBase,
-				amount: progressiveTax(schedule, taxBase, rounding.value.monthlyTax),
-				practiceId: practice?.id ?? null
-			});
 		}
+		if (practice) uses.push(practiceUse(practice));
+		else uses.push(lawSchedule.use);
+		const taxBase = Math.max(0, sm.taxableIncome - sm.insurance - deduction);
+		const schedule = practice ? practice.monthlySchedule : lawSchedule.value;
+		out.push({
+			month: sm.month,
+			taxBase,
+			amount: progressiveTax(schedule, taxBase, rounding.value.monthlyTax),
+			practiceId: practice?.id ?? null
+		});
 	}
 
 	return {

@@ -26,6 +26,8 @@ export interface SourceMonth {
 	readonly sourceIndex: number;
 	readonly sourceId: string;
 	readonly month: number;
+	/** Nhóm các lần chi trả sau khi nghỉ việc, tách khỏi lương thường trong cùng tháng. */
+	readonly afterTermination: boolean;
 	readonly paymentIndexes: readonly number[];
 	readonly lastDate: IsoDate;
 	readonly gross: Money;
@@ -45,13 +47,19 @@ export function sourceMonths(rb: Rulebook, c: TaxYearCase): SourceMonth[] {
 	const housingCap = resolveByPeriod('employmentIncome.housingInclusionCap', rb.employmentIncome.housingInclusionCap);
 
 	c.incomeSources.forEach((source, sourceIndex) => {
-		const byMonth = new Map<number, number[]>();
+		// Nhóm theo (tháng, sau-khi-nghỉ): lần chi sau khi nghỉ khấu trừ theo cách khác lương thường.
+		const groups = new Map<string, { month: number; after: boolean; idx: number[] }>();
 		source.payments.forEach((p, j) => {
 			const m = monthOf(p.date);
-			byMonth.set(m, [...(byMonth.get(m) ?? []), j]);
+			const after = p.paidAfterTermination === true;
+			const k = `${String(m).padStart(2, '0')}|${after ? 1 : 0}`;
+			const g = groups.get(k) ?? { month: m, after, idx: [] };
+			g.idx.push(j);
+			groups.set(k, g);
 		});
-		for (const month of [...byMonth.keys()].sort((a, b) => a - b)) {
-			const idx = byMonth.get(month)!.sort((a, b) => (source.payments[a].date < source.payments[b].date ? -1 : 1));
+		for (const key of [...groups.keys()].sort()) {
+			const { month, after, idx: raw } = groups.get(key)!;
+			const idx = raw.sort((a, b) => (source.payments[a].date < source.payments[b].date ? -1 : 1));
 			const uses: ParamUse[] = [];
 			let mealCapUsed = 0;
 			const meal: Money[] = [];
@@ -97,6 +105,7 @@ export function sourceMonths(rb: Rulebook, c: TaxYearCase): SourceMonth[] {
 				sourceIndex,
 				sourceId: source.id,
 				month,
+				afterTermination: after,
 				paymentIndexes: idx,
 				lastDate: source.payments[idx[idx.length - 1]].date,
 				gross,

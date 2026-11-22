@@ -53,7 +53,13 @@ export const OPEN_ISSUES = {
 		question: 'Tự quyết toán có bắt buộc gộp vãng lai bình quân ≤ 15 triệu/tháng không.',
 		policy: 'Tính cả hai phương án.'
 	},
-	'oi-17': { researchNo: 17, question: 'Phạt cá nhân bằng 1/2 tổ chức; NĐ 310/2025.', policy: 'Hiện khung cao, ghi chú.' }
+	'oi-17': { researchNo: 17, question: 'Phạt cá nhân bằng 1/2 tổ chức; NĐ 310/2025.', policy: 'Hiện khung cao, ghi chú.' },
+	'oi-18': {
+		researchNo: 18,
+		question:
+			'Khoản công ty cũ trả sau khi nghỉ việc, đã khấu trừ 10%, khi trong năm không còn lương thường ở đó: tính là một nơi trả lương hay là thu nhập vãng lai.',
+		policy: 'Tính là một nơi trả lương; gắn cờ.'
+	}
 } as const satisfies Record<string, OpenIssue>;
 
 export type OpenIssueId = keyof typeof OPEN_ISSUES;

@@ -285,6 +285,7 @@ Tiết kiệm ước tính = trần × thuế suất biên. App tính chính xá
 | 15 | Giảm trừ đủ 12 tháng cho người làm không đủ năm; người không cư trú | Mặc định 12 tháng, gắn cờ |
 | 16 | Tự quyết toán có bắt buộc gộp vãng lai ≤ 15 triệu không | Tính cả hai phương án |
 | 17 | Phạt cá nhân bằng 1/2 tổ chức; NĐ 310/2025 | Hiện khung cao, ghi chú |
+| 18 | Khoản công ty cũ trả sau khi nghỉ việc (đã khấu trừ 10%), khi trong năm không còn lương thường ở đó: tính công ty cũ là một nơi trả lương, hay coi như thu nhập vãng lai để vẫn ủy quyền được | Tính là một nơi trả lương (thận trọng: sai thì chỉ tốn thủ tục, không bị truy thu); gắn cờ. Thêm ngày 22/11/2026 sau review ca đổi việc có ESOP |
 
 ## Kết luận
 - Năm thuế 2026 đổi hướng mặc định của app: kịch bản phổ biến nhất là **được hoàn**, không phải nộp bù. Ba lý do: biểu mới áp hồi tố cả năm; nửa đầu năm có thể đã bị khấu trừ theo biểu cũ; có các khoản giảm trừ chỉ dùng được khi tự quyết toán.

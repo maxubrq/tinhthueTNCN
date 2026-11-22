@@ -348,6 +348,15 @@ export const vn2026 = defineRulebook({
 			sourceRefs: [ref(R, 'Câu hỏi (1), bước 8')],
 			status: 'INFERRED',
 			rationale: 'Quy định này có cho năm 2025; chưa thấy văn bản năm 2026 xác nhận.'
+		},
+		postTerminationPaymentCountsAsEmployer: {
+			axis: 'TAX_PERIOD',
+			value: true,
+			sourceRefs: [ref(R, 'Điểm mở 18')],
+			status: 'INFERRED',
+			rationale:
+				'Chưa rõ khoản công ty cũ trả sau khi bạn nghỉ việc có làm công ty đó thành một nơi trả lương khi xét ủy quyền không. App tính là có, để bạn không bị truy thu nếu cách hiểu này đúng.',
+			openIssues: ['oi-18']
 		}
 	},
 

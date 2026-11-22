@@ -44,7 +44,7 @@ export const vn2025 = defineRulebook({
 			issuedOn: '2026-03-04'
 		}
 	},
-	openIssues: pickOpenIssues('oi-9', 'oi-10', 'oi-12', 'oi-14', 'oi-15'),
+	openIssues: pickOpenIssues('oi-9', 'oi-10', 'oi-12', 'oi-14', 'oi-15', 'oi-18'),
 
 	schedules: {
 		monthly: {
@@ -299,6 +299,15 @@ export const vn2025 = defineRulebook({
 			value: true,
 			sourceRefs: [ref(R, 'Câu hỏi (1), bước 8: quy định 2025')],
 			status: 'VERIFIED'
+		},
+		postTerminationPaymentCountsAsEmployer: {
+			axis: 'TAX_PERIOD',
+			value: true,
+			sourceRefs: [ref(R, 'Điểm mở 18')],
+			status: 'INFERRED',
+			rationale:
+				'Chưa rõ khoản công ty cũ trả sau khi bạn nghỉ việc có làm công ty đó thành một nơi trả lương khi xét ủy quyền không. App tính là có, để bạn không bị truy thu nếu cách hiểu này đúng.',
+			openIssues: ['oi-18']
 		}
 	},
 

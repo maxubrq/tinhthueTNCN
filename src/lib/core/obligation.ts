@@ -36,8 +36,12 @@ export interface TriageAnswers {
 /** Dữ kiện mà bảng quyết định đọc. */
 export interface ObligationFacts extends TriageAnswers {
 	readonly residency: Residency;
-	/** Số nơi trả lương có hợp đồng từ 3 tháng, có chi trả trong kỳ. */
+	/** Số nơi trả lương có hợp đồng từ 3 tháng, có lương thường trong kỳ. */
 	readonly progressiveEmployers: number;
+	/** Số nơi chỉ trả khoản sau khi bạn đã nghỉ việc, không có lương thường trong kỳ (điểm mở 18). */
+	readonly postTerminationOnlyEmployers: number;
+	/** Bình quân tháng của các khoản đó. */
+	readonly postTerminationOnlyMonthlyAverage: Money;
 	/** Thu nhập vãng lai đã khấu trừ thuế suất cố định, bình quân tháng. */
 	readonly casualMonthlyAverage: Money;
 	/** Đã khai y tế, giáo dục hoặc từ thiện (chỉ trừ được khi tự quyết toán). */
@@ -47,18 +51,26 @@ export interface ObligationFacts extends TriageAnswers {
 export function factsFromCase(rb: Rulebook, c: TaxYearCase, answers: TriageAnswers): ObligationFacts {
 	const months = sourceMonths(rb, c);
 	let progressiveEmployers = 0;
+	let postOnly = 0;
+	let postOnlyIncome = 0;
 	let casual = 0;
 	c.incomeSources.forEach((s, i) => {
 		const own = months.filter((m) => m.sourceIndex === i);
 		if (own.length === 0) return;
-		if (regimeOf(rb, s).regime === 'PROGRESSIVE') progressiveEmployers++;
-		else casual += own.reduce((a, m) => a + m.taxableIncome, 0);
+		const income = own.reduce((a, m) => a + m.taxableIncome, 0);
+		if (regimeOf(rb, s).regime !== 'PROGRESSIVE') casual += income;
+		else if (own.every((m) => m.afterTermination)) {
+			postOnly++;
+			postOnlyIncome += income;
+		} else progressiveEmployers++;
 	});
 	const cl = c.claims;
 	return {
 		...answers,
 		residency: c.residency,
 		progressiveEmployers,
+		postTerminationOnlyEmployers: postOnly,
+		postTerminationOnlyMonthlyAverage: Math.floor(postOnlyIncome / 12),
 		casualMonthlyAverage: Math.floor(casual / 12),
 		hasSelfOnlyClaims: Boolean(cl.medical || cl.education || cl.charity)
 	};
@@ -114,19 +126,32 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 	const casualCap = resolveByPeriod('settlement.casualIncomeMonthlyAverageCap', rb.settlement.casualIncomeMonthlyAverageCap);
 	const minContract = resolveByPeriod('withholding.progressiveMinContractMonths', rb.withholding.progressiveMinContractMonths);
 	const selfDeadline = { date: individual.value.date, rule: individual.value.rule };
+	// Điểm mở 18: nơi chỉ trả khoản sau khi nghỉ việc tính là nơi trả lương hay là vãng lai.
+	const extraUses: ParamUse[] = [];
+	let employers = f.progressiveEmployers;
+	let casualAvg = f.casualMonthlyAverage;
+	if (f.postTerminationOnlyEmployers > 0) {
+		const post = resolveByPeriod(
+			'settlement.postTerminationPaymentCountsAsEmployer',
+			rb.settlement.postTerminationPaymentCountsAsEmployer
+		);
+		extraUses.push(post.use);
+		if (post.value) employers += f.postTerminationOnlyEmployers;
+		else casualAvg += f.postTerminationOnlyMonthlyAverage;
+	}
 	const office =
-		f.progressiveEmployers >= 2
+		employers >= 2
 			? 'Cơ quan thuế quản lý nơi trả thu nhập lớn nhất cho bạn trong năm.'
 			: 'Cơ quan thuế nơi bạn đã trực tiếp khai thuế trong năm; nếu chưa từng tự khai, là cơ quan thuế quản lý nơi trả lương cho bạn.';
 	// Bước 7: gọi đúng tên lý do khiến bạn không ủy quyền được.
 	const why: string[] = [];
-	if (f.progressiveEmployers >= 2) why.push(`bạn nhận lương từ ${f.progressiveEmployers} nơi`);
-	else if (f.progressiveEmployers === 1 && !f.employedAtSettlement) why.push('bạn không còn làm ở nơi trả lương lúc quyết toán');
-	if (f.casualMonthlyAverage > casualCap.value) why.push('thu nhập vãng lai bình quân mỗi tháng vượt ngưỡng');
+	if (employers >= 2) why.push(`bạn nhận lương từ ${employers} nơi`);
+	else if (employers === 1 && !f.employedAtSettlement) why.push('bạn không còn làm ở nơi trả lương lúc quyết toán');
+	if (casualAvg > casualCap.value) why.push('thu nhập vãng lai bình quân mỗi tháng vượt ngưỡng');
 	const because = why.length ? `Vì ${why.join(' và ')} nên không ủy quyền được. ` : '';
 
 	const done = (r: Draft): ObligationResult => {
-		const params = [...(r.params ?? [])];
+		const params = [...(r.params ?? []), ...extraUses];
 		return {
 			rulebookId: rb.id,
 			notes: [],
@@ -215,10 +240,10 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 		});
 	}
 
-	const sole = f.progressiveEmployers === 1 && f.employedAtSettlement;
+	const sole = employers === 1 && f.employedAtSettlement;
 
 	// Bước 5
-	if (sole && f.casualMonthlyAverage === 0) {
+	if (sole && casualAvg === 0) {
 		return done({
 			step: 5,
 			verdict: 'MAY_AUTHORIZE',
@@ -231,13 +256,13 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 	}
 
 	// Bước 6
-	if (sole && f.casualMonthlyAverage <= casualCap.value) {
+	if (sole && casualAvg <= casualCap.value) {
 		return done({
 			step: 6,
 			verdict: 'MAY_AUTHORIZE',
 			canAuthorize: true,
 			summary: 'Bạn nhận lương ở một nơi và có thêm thu nhập vãng lai đã bị khấu trừ 10%, bình quân mỗi tháng không vượt ngưỡng. Bạn vẫn ủy quyền được.',
-			amounts: { casualMonthlyAverage: f.casualMonthlyAverage, casualCap: casualCap.value },
+			amounts: { casualMonthlyAverage: casualAvg, casualCap: casualCap.value },
 			deadline: null,
 			params: [minContract.use, casualCap.use],
 			notes: ['Muốn gộp thu nhập vãng lai để tính lại thuế thì bạn phải tự quyết toán.']
@@ -245,7 +270,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 	}
 
 	// Bước 8 (xét trước bước 7, xem đầu file)
-	if (f.onlyInsurancePayouts && f.progressiveEmployers === 0) {
+	if (f.onlyInsurancePayouts && employers === 0) {
 		const ins = resolveByPeriod('settlement.insurancePayoutOnlyExempt', rb.settlement.insurancePayoutOnlyExempt);
 		if (ins.value) {
 			return done({
@@ -259,7 +284,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 		}
 	}
 
-	if (f.progressiveEmployers === 0 && f.casualMonthlyAverage === 0) {
+	if (employers === 0 && casualAvg === 0) {
 		return done({
 			step: 7,
 			verdict: 'NOT_REQUIRED',

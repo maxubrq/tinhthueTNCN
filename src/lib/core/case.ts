@@ -33,6 +33,12 @@ export interface Payment {
 	/** Tiền nhà doanh nghiệp trả thay, KHÔNG nằm trong `gross`. */
 	readonly housing?: Money;
 	readonly insurance?: InsuranceInput;
+	/**
+	 * Khoản nơi này trả sau khi bạn đã nghỉ việc ở đó (ví dụ ESOP, thưởng trả muộn). Luật buộc
+	 * khấu trừ thuế suất cố định cho lần chi này dù hợp đồng cũ từ 3 tháng. Vẫn là tiền lương
+	 * của nơi này: luôn gộp khi quyết toán, không tính là thu nhập vãng lai.
+	 */
+	readonly paidAfterTermination?: boolean;
 }
 
 /** Số đã khấu trừ do người dùng khai, ví dụ từ chứng từ khấu trừ hoặc eTax (I11). */

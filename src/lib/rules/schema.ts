@@ -296,6 +296,11 @@ export interface Rulebook<S extends string = string, O extends string = string> 
 		readonly foreignerExitDeadlineDays: PeriodParam<number, S, O>;
 		/** Chỉ có khoản chi trả bảo hiểm đã bị khấu trừ 10% thì không phải quyết toán. */
 		readonly insurancePayoutOnlyExempt: PeriodParam<boolean, S, O>;
+		/**
+		 * Nơi chỉ trả khoản sau khi đã nghỉ việc (không còn lương thường trong kỳ) có tính là một
+		 * nơi trả lương khi xét ủy quyền không. `false` = coi như thu nhập vãng lai (điểm mở 18).
+		 */
+		readonly postTerminationPaymentCountsAsEmployer: PeriodParam<boolean, S, O>;
 	};
 
 	/** Giả định thực hành mặc định cho kỳ này (ví dụ điểm mở 5). Có thể rỗng. */

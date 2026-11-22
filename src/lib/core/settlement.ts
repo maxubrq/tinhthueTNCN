@@ -211,7 +211,9 @@ function casualWarning(
 	scenario: Scenario,
 	warnings: Warning[]
 ): Money {
-	const casualTotal = sum(months.filter((m) => regimes[m.sourceIndex].regime === 'FLAT').map((m) => m.taxableIncome));
+	const casualTotal = sum(
+		months.filter((m) => regimes[m.sourceIndex].regime === 'FLAT' && !m.afterTermination).map((m) => m.taxableIncome)
+	);
 	if (casualTotal === 0) return 0;
 	const cap = resolveByPeriod('settlement.casualIncomeMonthlyAverageCap', rb.settlement.casualIncomeMonthlyAverageCap);
 	const average = Math.floor(casualTotal / 12);
