@@ -16,9 +16,11 @@
   - Desktop: Kết luận dính ở cột 1–4; các mục nhập và chi tiết ở cột 5–12.
   - Điện thoại: Kết luận nằm ngay sau phần nhập, và một thanh dính ở đáy hiện Δ kèm liên kết `#ket-luan` (neo này không mang số tiền).
 - **Chuyển động:** không có hoạt hình vào khung; chữ hiện ngay. Chỉ có hiệu ứng đổi trạng thái 100 ms trên nút chọn.
-- **Component** (`src/lib/components/`), mỗi cái không quá 6 prop thiết kế: `AmountField`, `Choice`, `Money`, `Section`.
+- **Component** (`src/lib/components/`), mỗi cái không quá 6 prop thiết kế: `AmountField`, `Choice`, `Money`, `Section`, `Timeline`.
+- **Dòng thời gian** (bổ sung 22/11/2026): chủ dự án muốn các khoản lương dễ phân biệt hơn. Không thêm màu. Khoảng lương phân biệt bằng sắc độ mực và xám xen kẽ; khoản trả một lần là ●, khoản trả sau khi nghỉ việc là ○. Màu tín hiệu đánh dấu tháng làm cùng lúc ở nhiều nơi, vì đó là chỗ app phải hỏi. Bảng HTML thật, mỗi ô có chữ ẩn cho trình đọc màn hình.
 
 ## Phương án đã bỏ
+- **Mỗi khoản lương một màu:** 4–5 màu làm màu tín hiệu mất nghĩa, và người mù màu không phân biệt được. Thay bằng sắc độ và dấu trong dòng thời gian. Chủ dự án vẫn có thể chọn lại.
 - **Luồng nhiều bước (wizard):** kết luận chỉ hiện ở bước cuối, nên mất phép so sánh "ủy quyền hay tự quyết toán" ngay khi gõ, vốn là khoảnh khắc chính (kiến trúc v0, mục 2).
 - **Kết luận ở cuối trang trên mọi màn hình:** ở 1440×723 px, con số rơi xuống dưới màn hình đầu.
 - **Thư viện UI có sẵn:** thêm phụ thuộc, nhiều cỡ chữ và màu ngoài hệ, khó giữ quy tắc hai cỡ chữ và một màu tín hiệu.

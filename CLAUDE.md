@@ -31,7 +31,7 @@ src/lib/core/        TS thuần, KHÔNG import Svelte, không gọi mạng, khô
                      settlement (câu 2), obligation (câu 1), levers (câu 3), trace, validate, case, errors
 src/lib/rules/       schema.ts, vn-2025.ts, vn-2026.ts, open-issues.ts, index.ts (RULEBOOKS)
 src/lib/ui/          amount.ts (đơn vị tiền), form.ts (form → TaxYearCase), compute.ts, describe.ts, storage.ts
-src/lib/components/  AmountField, Choice, Money, Section (ADR-013)
+src/lib/components/  AmountField, Choice, Money, Section, Timeline (ADR-013)
 src/lib/styles/      canon.css: token của hệ thiết kế
 src/routes/+page.svelte   một trang: hoàn cảnh → thu nhập → giảm trừ; kết luận cập nhật khi gõ
 tests/golden/        ca vàng theo từng Rulebook, và ca c1 (đổi việc có ESOP)

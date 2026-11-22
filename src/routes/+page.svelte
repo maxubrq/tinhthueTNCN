@@ -14,6 +14,7 @@
 	import Choice from '#lib/components/Choice.svelte';
 	import Money from '#lib/components/Money.svelte';
 	import Section from '#lib/components/Section.svelte';
+	import Timeline from '#lib/components/Timeline.svelte';
 	import type { Assessment } from '#lib/core/settlement.ts';
 	import type { Line } from '#lib/core/trace.ts';
 	import { RISKY_TRICKS } from '#lib/core/levers.ts';
@@ -305,6 +306,7 @@
 								<div class="fields">
 									<div class="months">
 										<span class="label" id="m-{p.key}">Từ tháng, đến tháng</span>
+										<span class="hint">Tháng nhận tiền, không phải tháng làm. Lương tháng 12 trả vào tháng 1 năm sau thì tính cho năm sau.</span>
 										<div class="row" role="group" aria-labelledby="m-{p.key}">
 											<select aria-label="Từ tháng" bind:value={p.fromMonth}>
 												{#each MONTHS as m (m)}<option value={m}>Tháng {m}</option>{/each}
@@ -316,9 +318,9 @@
 										</div>
 									</div>
 									<AmountField
-										label="Thu nhập mỗi tháng"
+										label="Thu nhập chịu thuế mỗi tháng"
 										bind:value={p.monthly}
-										hint="Lương và phụ cấp chịu thuế, trước khi trừ bảo hiểm và thuế."
+										hint="Lấy ở dòng thu nhập chịu thuế trên phiếu lương, trước khi trừ bảo hiểm. Không gồm khoản được miễn như tiền làm thêm giờ trong mức luật cho phép."
 									/>
 									<Choice
 										legend="Bảo hiểm bắt buộc tính trên"
@@ -328,6 +330,7 @@
 											{ value: 'NONE', label: 'Không đóng' }
 										]}
 										bind:value={p.insurance}
+										hint="Bảo hiểm thường tính trên lương ghi trong hợp đồng, thấp hơn tổng thu nhập. Thấy dòng BHXH trên phiếu lương khác 10,5% thu nhập thì chọn Mức lương khác."
 									/>
 									{#if p.insurance === 'OTHER'}
 										<AmountField label="Lương đóng bảo hiểm mỗi tháng" bind:value={p.insuranceSalary} hint="Có trên hợp đồng lao động hoặc phiếu lương." />
@@ -399,6 +402,10 @@
 				</fieldset>
 			{/each}
 			<button type="button" class="add" onclick={addSource}>Thêm nơi trả lương</button>
+
+			{#if activeSources(form).length > 0}
+				<Timeline sources={activeSources(form)} overlap={overlap.months} />
+			{/if}
 
 			{#if overlap.months.length > 0 && estimating}
 				<!-- Chỉ dùng để ước tính số đã khấu trừ hằng tháng; quyết toán năm luôn trừ đủ 12 tháng. -->
