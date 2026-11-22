@@ -67,7 +67,10 @@ export interface FormState {
 		insuranceOnly: boolean;
 	};
 	sources: SourceForm[];
-	/** Nơi đăng ký giảm trừ gia cảnh. */
+	/**
+	 * Nơi trừ giảm trừ gia cảnh trong những tháng bạn làm cùng lúc ở nhiều nơi. Tháng chỉ làm
+	 * một nơi thì nơi đó tự trừ, không cần trường này. `null` = không nơi nào trừ.
+	 */
 	personalSourceKey: string | null;
 	/** Nơi đang làm lúc quyết toán; `null` = đã nghỉ việc. */
 	currentSourceKey: string | null;
@@ -204,6 +207,46 @@ export function activeSources(f: FormState): SourceForm[] {
 	);
 }
 
+/** Các tháng có lương thường (không tính khoản trả một lần) của một nơi. */
+export function salaryMonths(s: SourceForm): Set<number> {
+	const out = new Set<number>();
+	for (const p of s.periods) {
+		if ((p.monthly ?? 0) <= 0) continue;
+		const [lo, hi] = span(p);
+		for (let m = lo; m <= hi; m++) out.add(m);
+	}
+	return out;
+}
+
+/** Những tháng bạn nhận lương cùng lúc ở từ hai nơi hợp đồng từ 3 tháng trở lên, và các nơi đó. */
+export function concurrentMonths(f: FormState): { months: number[]; sources: SourceForm[] } {
+	const long = activeSources(f).filter((s) => s.contract === 'LONG');
+	const count = new Map<number, number>();
+	for (const s of long) for (const m of salaryMonths(s)) count.set(m, (count.get(m) ?? 0) + 1);
+	const months = [...count].filter(([, n]) => n >= 2).map(([m]) => m).sort((a, b) => a - b);
+	const sources = long.filter((s) => months.some((m) => salaryMonths(s).has(m)));
+	return { months, sources };
+}
+
+/** Nơi trừ giảm trừ trong các tháng làm cùng lúc. Lựa chọn cũ không còn hợp lệ thì lấy nơi đầu tiên. */
+export function concurrentClaimer(f: FormState): string | null {
+	const { sources } = concurrentMonths(f);
+	if (sources.length === 0 || f.personalSourceKey === null) return null;
+	return sources.some((s) => s.key === f.personalSourceKey) ? f.personalSourceKey : sources[0].key;
+}
+
+/** "3–5, 9, 11–12": viết gọn danh sách tháng. */
+export function monthRanges(months: readonly number[]): string {
+	const out: string[] = [];
+	for (let i = 0; i < months.length; ) {
+		let j = i;
+		while (j + 1 < months.length && months[j + 1] === months[j] + 1) j++;
+		out.push(i === j ? `${months[i]}` : `${months[i]}–${months[j]}`);
+		i = j + 1;
+	}
+	return out.join(', ');
+}
+
 /** Lỗi mà người dùng tự sửa được trên form, viết cho người dùng đọc. */
 export function formProblems(f: FormState): string[] {
 	const out: string[] = [];
@@ -232,12 +275,18 @@ export function formProblems(f: FormState): string[] {
 export function toCase(f: FormState): TaxYearCase {
 	const y = f.taxYear;
 	const active = activeSources(f);
+	// Giảm trừ gia cảnh theo tháng: tháng chỉ làm một nơi thì nơi đó trừ; tháng làm cùng lúc
+	// nhiều nơi thì chỉ nơi bạn chọn trừ. Hợp đồng dưới 3 tháng không trừ.
+	const overlap = new Set(concurrentMonths(f).months);
+	const claimer = concurrentClaimer(f);
+	const deductionMonths = (s: SourceForm) =>
+		s.contract !== 'LONG' ? [] : [...salaryMonths(s)].filter((m) => !overlap.has(m) || claimer === s.key).sort((a, b) => a - b);
 	const incomeSources: IncomeSource[] = active.map((s) => ({
 		id: s.key,
 		name: s.name.trim() || 'Nơi trả lương',
 		contractMonths: s.contract === 'LONG' ? 12 : null,
-		// Chỉ một nơi trả lương thì trang không hỏi: nơi đó trừ giảm trừ bản thân nếu hợp đồng từ 3 tháng.
-		claimsPersonalDeduction: active.length === 1 ? s.contract === 'LONG' : f.personalSourceKey === s.key,
+		claimsPersonalDeduction: deductionMonths(s).length > 0,
+		personalDeductionMonths: deductionMonths(s),
 		payments: payments(y, s),
 		withheld: s.withheld === null ? undefined : { amount: s.withheld, provenance: 'USER' }
 	}));

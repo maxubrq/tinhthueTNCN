@@ -53,8 +53,17 @@ export interface IncomeSource {
 	readonly name: string;
 	/** Thời hạn hợp đồng (tháng); `null` = không có hợp đồng. */
 	readonly contractMonths: number | null;
-	/** Người nộp thuế đăng ký giảm trừ gia cảnh ở nguồn này (tối đa một nguồn). */
+	/**
+	 * Nơi này trừ giảm trừ gia cảnh khi khấu trừ hằng tháng, trong mọi tháng có lương ở đây.
+	 * Dùng `personalDeductionMonths` khi chỉ trừ ở một số tháng.
+	 */
 	readonly claimsPersonalDeduction: boolean;
+	/**
+	 * Các tháng (1–12) nơi này trừ giảm trừ gia cảnh khi khấu trừ hằng tháng. Có trường này thì
+	 * nó thay cho `claimsPersonalDeduction`. Làm lần lượt nhiều nơi thì mỗi nơi trừ trong tháng
+	 * của mình; luật chỉ cấm hai nơi cùng trừ trong một tháng.
+	 */
+	readonly personalDeductionMonths?: readonly number[];
 	readonly payments: readonly Payment[];
 	/** Tổng đã khấu trừ cả năm. Không có thì app mô phỏng và gắn nhãn SIMULATED. */
 	readonly withheld?: WithheldAmount;
@@ -100,6 +109,13 @@ export function monthOf(date: IsoDate): number {
 	return Number(date.slice(5, 7));
 }
 
+/** Các tháng nơi này trừ giảm trừ gia cảnh khi khấu trừ hằng tháng. */
+export function personalDeductionMonthsOf(s: IncomeSource): Set<number> {
+	if (s.personalDeductionMonths) return new Set(s.personalDeductionMonths);
+	if (!s.claimsPersonalDeduction) return new Set();
+	return new Set(s.payments.filter((p) => !p.paidAfterTermination).map((p) => monthOf(p.date)));
+}
+
 export function caseProblems(c: TaxYearCase): string[] {
 	const p: string[] = [];
 	const money = (where: string, x: unknown, optional = true) => {
@@ -108,7 +124,6 @@ export function caseProblems(c: TaxYearCase): string[] {
 	};
 	if (!Number.isSafeInteger(c.taxPeriod)) p.push('taxPeriod phải là năm.');
 	const ids = new Set<string>();
-	let claimers = 0;
 	c.incomeSources.forEach((s, i) => {
 		const w = `incomeSources[${i}]`;
 		if (ids.has(s.id)) p.push(`${w}: id "${s.id}" bị trùng.`);
@@ -116,7 +131,6 @@ export function caseProblems(c: TaxYearCase): string[] {
 		if (s.contractMonths !== null && (!Number.isSafeInteger(s.contractMonths) || s.contractMonths < 0)) {
 			p.push(`${w}.contractMonths: phải là số tháng nguyên không âm hoặc null.`);
 		}
-		if (s.claimsPersonalDeduction) claimers++;
 		if (s.withheld) money(`${w}.withheld.amount`, s.withheld.amount, false);
 		s.payments.forEach((pay, j) => {
 			const pw = `${w}.payments[${j}]`;
@@ -142,7 +156,17 @@ export function caseProblems(c: TaxYearCase): string[] {
 			if (pay.insurance?.kind === 'SALARY') money(`${pw}.insurance.salary`, pay.insurance.salary, false);
 		});
 	});
-	if (claimers > 1) p.push('Chỉ được đăng ký giảm trừ gia cảnh ở một nơi trả thu nhập.');
+	const claimedBy = new Map<number, string>();
+	c.incomeSources.forEach((s) => {
+		for (const m of s.personalDeductionMonths ?? []) {
+			if (!Number.isSafeInteger(m) || m < 1 || m > 12) p.push(`${s.id}.personalDeductionMonths: tháng ${m} không hợp lệ.`);
+		}
+		for (const m of personalDeductionMonthsOf(s)) {
+			const other = claimedBy.get(m);
+			if (other) p.push(`Tháng ${m}: cả ${other} và ${s.name} cùng trừ giảm trừ gia cảnh; mỗi tháng chỉ một nơi được trừ.`);
+			else claimedBy.set(m, s.name);
+		}
+	});
 	const depIds = new Set<string>();
 	c.dependents.forEach((d, i) => {
 		const w = `dependents[${i}]`;

@@ -19,6 +19,12 @@ Persona chính của kiến trúc v0 là *người đổi việc giữa năm*. C
 - **Hồ sơ đã lưu:** `FormState.version = 2`. Hàm `migrateForm` chuyển bản 1 sang bản 2 khi đọc. `storage.load()` phải chấp nhận bản 1 mãi mãi.
 - **Lỗi người dùng tự sửa được** (`formProblems`): hai khoảng tháng trùng nhau; khoản "trả sau khi nghỉ" nằm trước tháng lương cuối. Trang hiện lỗi, không tính.
 
+### Bổ sung 22/11/2026: giảm trừ bản thân tính theo tháng
+- Bản đầu hỏi "đăng ký giảm trừ ở nơi nào" và chỉ cho chọn một nơi cho cả năm. Câu hỏi này sai với người làm **lần lượt** ở A rồi B: mỗi nơi trừ trong tháng của mình. Luật chỉ cấm hai nơi cùng trừ trong **một tháng**.
+- Core: `IncomeSource.personalDeductionMonths`. Validator chặn hai nơi cùng trừ một tháng, thay cho quy tắc cũ "tối đa một nơi".
+- Form: tháng chỉ làm một nơi thì nơi đó tự trừ. Trang chỉ hỏi cho những tháng làm cùng lúc ở từ hai nơi hợp đồng từ 3 tháng, và ghi rõ đó là tháng nào, ở những nơi nào.
+- Hệ quả cho ca c1 qua form: B trừ giảm trừ trong tháng 12, nên số ước tính là hoàn 9.109.300 đ. Ca vàng core c1 (hoàn 12.209.300 đ) vẫn đúng với giả định của nó, là B **không** trừ; ca này giữ nguyên.
+
 ## Phương án đã bỏ
 - **Hai bản vá riêng** (ô "tháng không nhận lương" và loại khối "khoản sau khi nghỉ"): phải đổi hình dạng hồ sơ đã lưu hai lần, và không sửa được ca tăng lương.
 - **Khối "A (ESOP)" kiểu vãng lai:** tách một công ty thành hai danh tính (vi phạm B2 của Tiêu chuẩn A), và cho phép "không gộp".

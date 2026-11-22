@@ -21,7 +21,18 @@
 	import type { Unit } from '#lib/ui/amount.ts';
 	import { compute, SUPPORTED_YEARS } from '#lib/ui/compute.ts';
 	import { citations, flagLabel, flagTexts, VERDICT_TITLE } from '#lib/ui/describe.ts';
-	import { activeSources, defaultForm, newDependent, newExtra, newPeriod, newSource, type FormState } from '#lib/ui/form.ts';
+	import {
+		activeSources,
+		concurrentClaimer,
+		concurrentMonths,
+		defaultForm,
+		monthRanges,
+		newDependent,
+		newExtra,
+		newPeriod,
+		newSource,
+		type FormState
+	} from '#lib/ui/form.ts';
 	import * as storage from '#lib/ui/storage.ts';
 
 	const LATEST = SUPPORTED_YEARS[SUPPORTED_YEARS.length - 1];
@@ -59,6 +70,7 @@
 	const longSources = $derived(activeSources(form).filter((s) => s.contract === 'LONG'));
 	const hasShort = $derived(activeSources(form).some((s) => s.contract === 'SHORT'));
 	const estimating = $derived(activeSources(form).some((s) => s.withheld === null));
+	const overlap = $derived(concurrentMonths(form));
 	const practice = $derived(rb.withholdingPractices[0]);
 	const minUnemploymentCap = $derived(Math.min(...Object.values(rb.insurance.unemploymentMonthlyCap.segments[0].value)));
 	/** So sánh hai kịch bản khi ủy quyền là lựa chọn thật: được ủy quyền, hoặc chỉ vướng các khoản tự khai (bước 4). */
@@ -388,13 +400,13 @@
 			{/each}
 			<button type="button" class="add" onclick={addSource}>Thêm nơi trả lương</button>
 
-			{#if activeSources(form).length >= 2 && estimating}
+			{#if overlap.months.length > 0 && estimating}
 				<!-- Chỉ dùng để ước tính số đã khấu trừ hằng tháng; quyết toán năm luôn trừ đủ 12 tháng. -->
 				<Choice
-					legend="Mỗi tháng, nơi nào trừ trước {capText(rb.deductions.taxpayerMonthly.value)} cho bạn rồi mới tính thuế?"
-					options={[...activeSources(form).map((s) => ({ value: s.key as string | null, label: s.name || 'Nơi trả lương' })), { value: null, label: 'Không nơi nào' }]}
-					bind:value={form.personalSourceKey}
-					hint="Luật cho mỗi người trừ khoản này khỏi lương trước khi tính thuế, gọi là giảm trừ bản thân. Làm nhiều nơi thì chỉ một nơi được trừ, thường là nơi làm chính; xem dòng giảm trừ trên phiếu lương. Câu này chỉ giúp app ước tính số thuế đã bị khấu trừ. Khi quyết toán năm, bạn luôn được trừ đủ 12 tháng."
+					legend="Tháng {monthRanges(overlap.months)}, bạn nhận lương cùng lúc ở {overlap.sources.map((s) => s.name || 'Nơi trả lương').join(' và ')}. Những tháng đó, nơi nào trừ {capText(rb.deductions.taxpayerMonthly.value)} cho bạn trước khi tính thuế?"
+					options={[...overlap.sources.map((s) => ({ value: s.key as string | null, label: s.name || 'Nơi trả lương' })), { value: null, label: 'Không nơi nào' }]}
+					bind:value={() => concurrentClaimer(form), (v) => (form.personalSourceKey = v)}
+					hint="Luật cho mỗi người trừ khoản này khỏi lương mỗi tháng trước khi tính thuế, gọi là giảm trừ bản thân. Trong cùng một tháng chỉ một nơi được trừ, thường là nơi làm chính; xem dòng giảm trừ trên phiếu lương. Những tháng chỉ làm một nơi thì nơi đó tự trừ. Câu này chỉ giúp app ước tính số thuế đã bị khấu trừ; khi quyết toán năm, bạn luôn được trừ đủ 12 tháng."
 				/>
 			{/if}
 			{#if activeSources(form).length > 0}

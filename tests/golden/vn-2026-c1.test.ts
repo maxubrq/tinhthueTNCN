@@ -8,7 +8,9 @@
  *    đăng ký giảm trừ gia cảnh ở A. Tháng 11 A trả thêm một khoản sau khi đã nghỉ (ESOP),
  *    khấu trừ 10%.
  *  - Trợ cấp thất nghiệp T8–T11: không chịu thuế, không nằm trong hồ sơ.
- *  - Công ty B: hợp đồng từ 3 tháng, lương 60 tr tháng 12, không đăng ký giảm trừ ở B.
+ *  - Công ty B: hợp đồng từ 3 tháng, lương 60 tr tháng 12, KHÔNG trừ giảm trừ gia cảnh ở B.
+ *    Đây là giả định của ca này. Mặc định của form (làm lần lượt thì B có trừ) cho hoàn
+ *    9.109.300 đ; xem ADR-011, phần bổ sung, và src/lib/ui/form.test.ts.
  *
  * Tính tay (không ESOP, biểu mới): bảo hiểm 4,62 × 7 + 5,407 = 37,747 tr; TNTT 368 − 37,747
  * − 186 = 144,253 tr; thuế 10% × 144,253 − 6 = 8,4253 tr; A khấu trừ 1,888 × 7 = 13,216 tr;

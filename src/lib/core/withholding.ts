@@ -12,7 +12,7 @@
  * Mô phỏng không trừ hưu trí tự nguyện theo tháng: số thực tế có thể thấp hơn.
  */
 import type { IsoDate, Rulebook, WithholdingPractice } from '../rules/schema';
-import type { TaxYearCase } from './case';
+import { personalDeductionMonthsOf, type TaxYearCase } from './case';
 import { regimeOf, type SourceMonth } from './income';
 import { applyRate, MECHANISM_ROUNDING, sum, type Money } from './money';
 import { resolveByDate, resolveByPeriod } from './resolve';
@@ -71,6 +71,7 @@ export function simulateWithholding(
 	const lawSchedule = resolveByPeriod('schedules.monthly', rb.schedules.monthly);
 	const lawTaxpayer = resolveByPeriod('deductions.taxpayerMonthly', rb.deductions.taxpayerMonthly);
 	const lawDependent = resolveByPeriod('deductions.dependentMonthly', rb.deductions.dependentMonthly);
+	const deductionMonths = personalDeductionMonthsOf(source);
 
 	for (const sm of months.filter((m) => m.sourceIndex === sourceIndex)) {
 		// Thuế suất cố định: nguồn không có hợp đồng từ 3 tháng, hoặc lần chi sau khi đã nghỉ việc.
@@ -93,7 +94,7 @@ export function simulateWithholding(
 
 		const practice = practiceAt(rb, sm.lastDate, choice);
 		let deduction = 0;
-		if (source.claimsPersonalDeduction) {
+		if (deductionMonths.has(sm.month)) {
 			const deps = c.dependents.filter(
 				(d) => d.fromMonth <= sm.month && sm.month <= d.toMonth && d.registeredOn <= sm.lastDate
 			).length;

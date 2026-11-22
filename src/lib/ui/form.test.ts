@@ -4,7 +4,10 @@
 import { describe, expect, it } from 'vitest';
 import { compute } from './compute';
 import {
+	concurrentClaimer,
+	concurrentMonths,
 	defaultForm,
+	monthRanges,
 	migrateForm,
 	newExtra,
 	newPeriod,
@@ -128,7 +131,9 @@ describe('dòng thời gian của một nơi trả lương', () => {
 		expect(r.kind).toBe('ERROR');
 	});
 
-	it('c1 qua form: cùng số với ca vàng core (hoàn 12.209.300 đ)', () => {
+	it('c1 qua form: làm lần lượt nên B trừ giảm trừ trong tháng 12, hoàn 9.109.300 đ', () => {
+		// Ca vàng core c1 giả định B không trừ giảm trừ (hoàn 12.209.300 đ). Thực tế làm lần lượt thì
+		// mỗi nơi trừ trong tháng của mình: B khấu trừ 20% × (60 − 5,407 − 15,5) − 3,5 = 4,3186 tr.
 		const r = ok(
 			form((f) => {
 				f.sources[0] = {
@@ -137,11 +142,11 @@ describe('dòng thời gian của một nơi trả lương', () => {
 					extras: [{ key: 'e', month: 11, amount: 100 * TR, afterLeaving: true }]
 				};
 				f.sources.push({ ...newSource('B', 'Công ty B'), periods: [period(12, 12, 60 * TR, 'GROSS')] });
-				f.personalSourceKey = 'A';
 				f.currentSourceKey = 'B';
 			})
 		);
-		expect(r.comparison.self.delta.amount).toBe(-12_209_300);
+		expect(r.comparison.self.withheldBySource.map((w) => w.amount)).toEqual([23_216_000, 4_318_600]);
+		expect(r.comparison.self.delta.amount).toBe(-9_109_300);
 		expect(r.obligation.step).toBe(7);
 	});
 
@@ -172,6 +177,54 @@ describe('dòng thời gian của một nơi trả lương', () => {
 				onlyInsurancePayouts: false
 			}).progressiveEmployers).toBe(1);
 		}
+	});
+});
+
+describe('giảm trừ bản thân theo tháng', () => {
+	it('làm lần lượt A rồi B: không có tháng chung, không hỏi, mỗi nơi trừ trong tháng của mình', () => {
+		const f = form((f) => {
+			f.sources[0].periods = [period(1, 7, 30 * TR)];
+			f.sources.push({ ...newSource('s2', 'B'), periods: [period(8, 12, 30 * TR)] });
+			f.personalSourceKey = 's1';
+		});
+		expect(concurrentMonths(f).months).toEqual([]);
+		const c = toCase(f);
+		expect(c.incomeSources.map((s) => s.personalDeductionMonths)).toEqual([
+			[1, 2, 3, 4, 5, 6, 7],
+			[8, 9, 10, 11, 12]
+		]);
+	});
+
+	it('làm cùng lúc cả năm: chỉ nơi được chọn trừ (ca vàng hai nơi lương vẫn nộp thêm 11,4 tr)', () => {
+		const f = form((f) => {
+			f.sources[0].periods = [period(1, 12, 30 * TR)];
+			f.sources.push({ ...newSource('s2', 'B'), periods: [period(1, 12, 20 * TR)] });
+		});
+		expect(concurrentMonths(f).months).toHaveLength(12);
+		expect(toCase(f).incomeSources.map((s) => s.personalDeductionMonths?.length)).toEqual([12, 0]);
+		expect(ok(f).comparison.self.delta.amount).toBe(11_400_000);
+	});
+
+	it('chồng nhau vài tháng: chỉ hỏi cho tháng chung, tháng riêng vẫn tự trừ', () => {
+		const f = form((f) => {
+			f.sources[0].periods = [period(1, 8, 30 * TR)];
+			f.sources.push({ ...newSource('s2', 'B'), periods: [period(6, 12, 30 * TR)] });
+			f.personalSourceKey = 's2';
+		});
+		expect(monthRanges(concurrentMonths(f).months)).toBe('6–8');
+		expect(toCase(f).incomeSources.map((s) => s.personalDeductionMonths)).toEqual([
+			[1, 2, 3, 4, 5],
+			[6, 7, 8, 9, 10, 11, 12]
+		]);
+	});
+
+	it('lựa chọn cũ trỏ tới nơi không còn làm cùng lúc thì lấy nơi đầu tiên trong nhóm', () => {
+		const f = form((f) => {
+			f.sources[0].periods = [period(1, 12, 30 * TR)];
+			f.sources.push({ ...newSource('s2', 'B'), periods: [period(1, 12, 20 * TR)] });
+			f.personalSourceKey = 'khong-con';
+		});
+		expect(concurrentClaimer(f)).toBe('s1');
 	});
 });
 
