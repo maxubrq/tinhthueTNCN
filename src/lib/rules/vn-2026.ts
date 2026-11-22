@@ -90,7 +90,7 @@ export const vn2026 = defineRulebook({
 			value: { kind: 'MONTHLY_TIMES_12' },
 			sourceRefs: [ref(R, 'Công thức lõi: Biểu năm 2026')],
 			status: 'INFERRED',
-			rationale: 'Biểu năm = biểu tháng × 12 là thông lệ cũ, chưa có văn bản 2026 xác nhận.',
+			rationale: 'Lấy biểu năm bằng biểu tháng nhân 12 là cách làm của các năm trước; văn bản năm 2026 chưa xác nhận.',
 			openIssues: ['oi-6']
 		}
 	},
@@ -103,7 +103,7 @@ export const vn2026 = defineRulebook({
 		},
 		sourceRefs: [ref(R)],
 		status: 'INFERRED',
-		rationale: 'Nghiên cứu chưa nêu quy tắc làm tròn số thuế; tạm làm tròn tới đồng, lệch tối đa 1 đ.'
+		rationale: 'Chưa thấy văn bản quy định cách làm tròn số thuế. App tạm làm tròn tới đồng, lệch tối đa 1 đồng.'
 	},
 
 	employmentIncome: {
@@ -183,7 +183,7 @@ export const vn2026 = defineRulebook({
 					sourceRefs: [ref('nd-293-2025'), ref(R, 'Trần BHTN')],
 					status: 'PENDING',
 					rationale:
-						'20 × lương tối thiểu vùng. Vùng I 106,2 triệu do nghiên cứu suy ra, chưa xác minh; vùng II–IV (4,73 / 4,14 / 3,70 triệu × 20) ngoài nghiên cứu, cần đối chiếu NĐ 293/2025.',
+						'Trần bằng 20 lần lương tối thiểu vùng. Mức vùng I (106,2 triệu đồng) là số suy ra; mức vùng II đến IV (theo lương tối thiểu 4,73; 4,14; 3,70 triệu đồng) chưa được đối chiếu với Nghị định 293/2025.',
 					openIssues: ['oi-14']
 				}
 			]
@@ -208,7 +208,7 @@ export const vn2026 = defineRulebook({
 			value: 'FULL_YEAR',
 			sourceRefs: [ref(R, 'Câu hỏi (2), ghi chú')],
 			status: 'INFERRED',
-			rationale: 'Nghiên cứu suy luận người làm không đủ năm vẫn được giảm trừ bản thân đủ 186 triệu.',
+			rationale: 'Người làm không đủ năm được giả định vẫn được giảm trừ bản thân đủ 12 tháng (186 triệu đồng). Văn bản chưa nói rõ điểm này.',
 			openIssues: ['oi-15']
 		},
 		dependentIncomeMonthlyLimit: {
@@ -216,7 +216,7 @@ export const vn2026 = defineRulebook({
 			value: 3_000_000,
 			sourceRefs: [ref('tt-87-2026'), ref(R, 'Người phụ thuộc')],
 			status: 'INFERRED',
-			rationale: 'TT 87 áp từ 01/7/2026; app áp cho cả năm theo chính sách điểm mở 2.',
+			rationale: 'Thông tư 87/2026 đặt mức 3 triệu đồng từ 1/7/2026. Chưa rõ nửa đầu năm áp mức nào; app áp mức này cho cả năm.',
 			openIssues: ['oi-2']
 		},
 		dependentRegistrationDeadline: {
@@ -237,7 +237,7 @@ export const vn2026 = defineRulebook({
 			value: { annualCap: 23_000_000, selfSettlementOnly: true },
 			sourceRefs: [ref('luat-109-2025'), ref(R, 'Bảng tham số')],
 			status: 'INFERRED',
-			rationale: 'Chưa rõ áp cả năm 2026 hay từ 01/7; app áp cả năm.',
+			rationale: 'Chưa rõ khoản này được trừ cho cả năm 2026 hay chỉ từ 1/7/2026; app tính cho cả năm.',
 			openIssues: ['oi-8']
 		},
 		education: {
@@ -245,7 +245,7 @@ export const vn2026 = defineRulebook({
 			value: { annualCap: 24_000_000, selfSettlementOnly: true },
 			sourceRefs: [ref('luat-109-2025'), ref(R, 'Bảng tham số')],
 			status: 'INFERRED',
-			rationale: 'Chưa rõ áp cả năm 2026 hay từ 01/7; app áp cả năm.',
+			rationale: 'Chưa rõ khoản này được trừ cho cả năm 2026 hay chỉ từ 1/7/2026; app tính cho cả năm.',
 			openIssues: ['oi-8']
 		},
 		charity: {
@@ -253,7 +253,7 @@ export const vn2026 = defineRulebook({
 			value: { annualCap: null, selfSettlementOnly: true },
 			sourceRefs: [ref(R, 'Câu hỏi (3): Từ thiện')],
 			status: 'INFERRED',
-			rationale: 'Chưa thấy trần trong văn bản; app không đặt trần.',
+			rationale: 'Văn bản chưa đặt mức trừ tối đa; app trừ đủ số bạn nhập.',
 			openIssues: ['oi-9']
 		}
 	},
@@ -327,7 +327,7 @@ export const vn2026 = defineRulebook({
 			value: { rule: 'Ngày cuối tháng thứ 4 sau khi kết thúc năm; trùng ngày nghỉ thì lùi sang ngày làm việc kế tiếp.', date: null },
 			sourceRefs: [ref('nd-252-2026'), ref(R, 'Hạn nộp')],
 			status: 'PENDING',
-			rationale: '30/4/2027 là ngày lễ; ngày làm việc kế tiếp chờ Cục Thuế công bố.',
+			rationale: 'Ngày 30/4/2027 là ngày lễ nên hạn lùi sang ngày làm việc kế tiếp; Cục Thuế chưa công bố ngày cụ thể.',
 			openIssues: ['oi-13']
 		},
 		organizationDeadline: {
@@ -347,14 +347,14 @@ export const vn2026 = defineRulebook({
 			value: true,
 			sourceRefs: [ref(R, 'Câu hỏi (1), bước 8')],
 			status: 'INFERRED',
-			rationale: 'Nghiên cứu ghi đây là quy định 2025; chưa thấy văn bản 2026 xác nhận.'
+			rationale: 'Quy định này có cho năm 2025; chưa thấy văn bản năm 2026 xác nhận.'
 		}
 	},
 
 	withholdingPractices: [
 		{
 			id: 'vn-2026-h1-bieu-7-bac',
-			label: 'T1–T6/2026 khấu trừ theo biểu 7 bậc cũ, giảm trừ 15,5 / 6,2 triệu',
+			label: 'tháng 1 đến tháng 6/2026, công ty khấu trừ theo biểu 7 bậc cũ, với mức giảm trừ mới 15,5 triệu đồng cho bản thân và 6,2 triệu đồng cho mỗi người phụ thuộc',
 			from: '2026-01-01',
 			to: '2026-06-30',
 			monthlySchedule: {
@@ -372,7 +372,7 @@ export const vn2026 = defineRulebook({
 			dependentMonthly: 6_200_000,
 			sourceRefs: [ref('nd-253-2026', 'Điều 70.2'), ref(R, 'Nửa đầu năm 2026 là giai đoạn lai')],
 			status: 'INFERRED',
-			rationale: 'Nghiên cứu suy luận nhiều doanh nghiệp đã khấu trừ T1–T6 như vậy. Người dùng nên nhập số thực tế.',
+			rationale: 'Luật mới áp cho cả năm, nhưng nhiều công ty có lẽ vẫn khấu trừ tháng 1 đến tháng 6 theo biểu cũ. Biết số thật thì bạn nên nhập vào ô Thuế đã khấu trừ.',
 			openIssues: ['oi-5']
 		}
 	]

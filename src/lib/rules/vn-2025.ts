@@ -14,7 +14,7 @@ type Src = 'research' | 'luat-tncn-2007' | 'tt-111-2013' | 'nd-126-2020' | 'cv-1
 const ref = (source: Src, locator?: string) => (locator ? { source, locator } : { source });
 
 const SAME_RULE_2026 =
-	'Nghiên cứu nêu quy tắc này ở dạng chung, không gắn năm; suy ra áp cho cả kỳ 2025.';
+	'Quy tắc này được nêu chung, không gắn với năm nào; app giả định năm 2025 cũng áp dụng như vậy.';
 
 export const vn2025 = defineRulebook({
 	id: 'vn-2025',
@@ -79,7 +79,7 @@ export const vn2025 = defineRulebook({
 		},
 		sourceRefs: [ref(R)],
 		status: 'INFERRED',
-		rationale: 'Nghiên cứu chưa nêu quy tắc làm tròn số thuế; tạm làm tròn tới đồng, lệch tối đa 1 đ.'
+		rationale: 'Chưa thấy văn bản quy định cách làm tròn số thuế. App tạm làm tròn tới đồng, lệch tối đa 1 đồng.'
 	},
 
 	employmentIncome: {
@@ -92,7 +92,7 @@ export const vn2025 = defineRulebook({
 					value: { kind: 'EMPLOYER_POLICY' },
 					sourceRefs: [ref('tt-111-2013'), ref(R, 'Điểm mở 12')],
 					status: 'INFERRED',
-					rationale: 'Trần 1,2 triệu chỉ áp từ 01/7/2026; trước đó theo quy chế đơn vị (điểm mở 12).',
+					rationale: 'Mức miễn tối đa 1,2 triệu đồng/tháng chỉ áp từ 1/7/2026. Trước đó, phần tiền ăn được miễn tính theo quy chế của công ty.',
 					openIssues: ['oi-12']
 				}
 			]
@@ -122,7 +122,7 @@ export const vn2025 = defineRulebook({
 					value: { social: 800, health: 150, unemployment: 100 },
 					sourceRefs: [ref(R, 'Bảo hiểm bắt buộc phần người lao động: 10,5%')],
 					status: 'INFERRED',
-					rationale: 'Nghiên cứu nêu 10,5% trong phần năm 2026; tỷ lệ không đổi so với 2025.'
+					rationale: 'Tỷ lệ 10,5% được xác nhận cho năm 2026; app giả định năm 2025 cũng vậy.'
 				}
 			]
 		},
@@ -135,7 +135,7 @@ export const vn2025 = defineRulebook({
 					value: 46_800_000,
 					sourceRefs: [ref(R, 'Trần BHXH và BHYT')],
 					status: 'INFERRED',
-					rationale: 'Trần T1–T6/2026 là 46,8 triệu = 20 × 2,34 triệu; mức 2,34 triệu áp từ 01/7/2024, suy ra cho cả năm 2025.'
+					rationale: 'Trần 46,8 triệu đồng bằng 20 lần mức 2,34 triệu đồng, áp từ 1/7/2024; app suy ra mức này cho cả năm 2025.'
 				}
 			]
 		},
@@ -148,7 +148,7 @@ export const vn2025 = defineRulebook({
 					value: { I: 99_200_000, II: 88_200_000, III: 77_200_000, IV: 69_000_000 },
 					sourceRefs: [ref(R, 'Trần BHTN')],
 					status: 'PENDING',
-					rationale: '20 × lương tối thiểu vùng 2025 (4,96 / 4,41 / 3,86 / 3,45 triệu). Ngoài nghiên cứu; cần đối chiếu NĐ 74/2024.',
+					rationale: 'Trần bằng 20 lần lương tối thiểu vùng năm 2025 (4,96; 4,41; 3,86; 3,45 triệu đồng). Số này chưa được đối chiếu với Nghị định 74/2024.',
 					openIssues: ['oi-14']
 				}
 			]
@@ -173,7 +173,7 @@ export const vn2025 = defineRulebook({
 			value: 'FULL_YEAR',
 			sourceRefs: [ref('tt-111-2013', 'Điều 9'), ref(R, 'Điểm mở 15')],
 			status: 'INFERRED',
-			rationale: 'Nghiên cứu chỉ nêu cho 2026 (suy luận); giả định cùng cách tính cho 2025.',
+			rationale: 'Người làm không đủ năm được giả định vẫn được giảm trừ bản thân đủ 12 tháng. Văn bản chưa nói rõ điểm này.',
 			openIssues: ['oi-15']
 		},
 		dependentIncomeMonthlyLimit: {
@@ -181,7 +181,7 @@ export const vn2025 = defineRulebook({
 			value: 1_000_000,
 			sourceRefs: [ref('tt-111-2013', 'Điều 9')],
 			status: 'PENDING',
-			rationale: 'Ngoài nghiên cứu. Mức 1 triệu/tháng theo TT 111/2013; cần đối chiếu.'
+			rationale: 'Mức 1 triệu đồng/tháng lấy theo Thông tư 111/2013, chưa được đối chiếu lại.'
 		},
 		dependentRegistrationDeadline: {
 			axis: 'TAX_PERIOD',
@@ -213,7 +213,7 @@ export const vn2025 = defineRulebook({
 			value: { annualCap: null, selfSettlementOnly: true },
 			sourceRefs: [ref('tt-111-2013', 'Điều 9.2')],
 			status: 'PENDING',
-			rationale: 'Ngoài nghiên cứu. TT 111/2013 có giảm trừ từ thiện, nhân đạo, khuyến học; cần đối chiếu điều kiện.',
+			rationale: 'Thông tư 111/2013 cho trừ tiền từ thiện, nhân đạo, khuyến học, nhưng điều kiện chi tiết chưa được đối chiếu.',
 			openIssues: ['oi-9']
 		}
 	},
@@ -292,7 +292,7 @@ export const vn2025 = defineRulebook({
 			value: 45,
 			sourceRefs: [ref('nd-126-2020'), ref(R, 'Câu hỏi (1), bước 1')],
 			status: 'INFERRED',
-			rationale: 'Nghiên cứu trích NĐ 252/2026; mức 45 ngày suy ra cũng áp theo NĐ 126/2020 cho kỳ 2025.'
+			rationale: 'Mức 45 ngày lấy từ Nghị định 252/2026; app giả định quy định cho năm 2025 cũng vậy.'
 		},
 		insurancePayoutOnlyExempt: {
 			axis: 'TAX_PERIOD',

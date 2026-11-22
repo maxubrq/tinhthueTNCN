@@ -69,9 +69,10 @@ describe('vn-2026: có phải tự quyết toán không', () => {
 		const d = (amount: number) =>
 			({ amount, direction: amount > 0 ? 'PAY' : 'REFUND', withinSmallThreshold: Math.abs(amount) <= 50_000, smallThreshold: 50_000 }) as const;
 		expect(decideObligation(rb, f, d(50_000)).verdict).toBe('EXEMPT_SMALL_DELTA');
-		expect(decideObligation(rb, f, d(50_000)).notes.join()).toContain('điểm mở 3');
+		// Điểm mở 3: năm 2026 có thể vẫn phải nộp hồ sơ dù miễn nộp tiền.
+		expect(decideObligation(rb, f, d(50_000)).notes.join()).toContain('vẫn phải nộp hồ sơ');
 		expect(decideObligation(rb, f, d(50_001)).verdict).toBe('MUST_SELF_SETTLE');
-		expect(decideObligation(rb, f, d(-50_000)).summary).toContain('bù trừ');
+		expect(decideObligation(rb, f, d(-50_000)).summary).toContain('trừ vào số thuế kỳ sau');
 	});
 });
 

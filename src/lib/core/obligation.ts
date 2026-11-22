@@ -116,8 +116,14 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 	const selfDeadline = { date: individual.value.date, rule: individual.value.rule };
 	const office =
 		f.progressiveEmployers >= 2
-			? 'Cơ quan thuế quản lý tổ chức trả thu nhập lớn nhất trong năm.'
-			: 'Cơ quan thuế nơi bạn đã trực tiếp khai thuế, hoặc quản lý nơi trả lương.';
+			? 'Cơ quan thuế quản lý nơi trả thu nhập lớn nhất cho bạn trong năm.'
+			: 'Cơ quan thuế nơi bạn đã trực tiếp khai thuế trong năm; nếu chưa từng tự khai, là cơ quan thuế quản lý nơi trả lương cho bạn.';
+	// Bước 7: gọi đúng tên lý do khiến bạn không ủy quyền được.
+	const why: string[] = [];
+	if (f.progressiveEmployers >= 2) why.push(`bạn nhận lương từ ${f.progressiveEmployers} nơi`);
+	else if (f.progressiveEmployers === 1 && !f.employedAtSettlement) why.push('bạn không còn làm ở nơi trả lương lúc quyết toán');
+	if (f.casualMonthlyAverage > casualCap.value) why.push('thu nhập vãng lai bình quân mỗi tháng vượt ngưỡng');
+	const because = why.length ? `Vì ${why.join(' và ')} nên không ủy quyền được. ` : '';
 
 	const done = (r: Draft): ObligationResult => {
 		const params = [...(r.params ?? [])];
@@ -140,11 +146,11 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 0,
 			verdict: 'NOT_IN_PROGRESSIVE_FLOW',
 			canAuthorize: false,
-			summary: `Người không cư trú chịu ${rate.value / 100}% trên tổng tiền lương, không có giảm trừ, không quyết toán theo biểu lũy tiến.`,
+			summary: `Người không cư trú nộp ${rate.value / 100}% trên toàn bộ tiền lương làm việc tại Việt Nam, không được giảm trừ và không tính theo biểu lũy tiến.`,
 			deadline: null,
 			params: [rate.use],
 			supported: false,
-			notes: ['App chưa hỗ trợ đầy đủ người không cư trú.']
+			notes: ['App chưa tính đầy đủ cho người không cư trú; hãy coi con số là tham khảo.']
 		});
 	}
 
@@ -155,7 +161,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 1,
 			verdict: 'MUST_SELF_SETTLE',
 			canAuthorize: false,
-			summary: `Người nước ngoài kết thúc làm việc tại Việt Nam phải tự quyết toán, chậm nhất ${days.value} ngày sau khi hợp đồng kết thúc.`,
+			summary: `Người nước ngoài thôi làm việc tại Việt Nam phải tự quyết toán, chậm nhất ${days.value} ngày sau khi hợp đồng kết thúc.`,
 			deadline: { date: addDays(f.foreignerContractEnd, days.value), rule: `${days.value} ngày sau ngày kết thúc hợp đồng.` },
 			filingOffice: office,
 			params: [days.use]
@@ -168,11 +174,11 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 2,
 			verdict: 'MUST_SELF_SETTLE',
 			canAuthorize: false,
-			summary: 'Năm cư trú đầu tiên tính theo 12 tháng liên tục: bắt buộc tự quyết toán.',
+			summary: 'Năm cư trú đầu tiên tính theo 12 tháng liên tục thì bạn phải tự quyết toán.',
 			deadline: { date: null, rule: 'Ngày cuối tháng thứ 4 kể từ khi tròn 12 tháng cư trú.' },
 			filingOffice: office,
 			supported: false,
-			notes: ['App chưa tính Δ cho kỳ tính thuế 12 tháng liên tục khác năm dương lịch.']
+			notes: ['App chưa tính được số chênh lệch khi năm tính thuế không trùng năm dương lịch.']
 		});
 	}
 
@@ -182,12 +188,12 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 3,
 			verdict: 'MUST_SELF_SETTLE',
 			canAuthorize: false,
-			summary: 'Có thu nhập từ nước ngoài hoặc tổ chức quốc tế chưa khấu trừ và có phát sinh thuế: bắt buộc tự quyết toán.',
+			summary: 'Bạn có thu nhập từ nước ngoài hoặc từ tổ chức quốc tế chưa bị khấu trừ thuế, nên phải tự quyết toán.',
 			deadline: selfDeadline,
 			filingOffice: office,
 			params: [individual.use],
 			supported: false,
-			notes: ['App chưa tính phần thu nhập và thuế đã nộp ở nước ngoài.']
+			notes: ['App chưa tính phần thu nhập này và phần thuế đã nộp ở nước ngoài.']
 		});
 	}
 
@@ -197,12 +203,15 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 4,
 			verdict: 'MUST_SELF_SETTLE',
 			canAuthorize: false,
-			summary:
-				'Muốn trừ y tế, giáo dục, từ thiện hoặc được giảm thuế do thiên tai, bệnh hiểm nghèo thì phải tự quyết toán; không ủy quyền được.',
+			summary: f.hasSelfOnlyClaims
+				? 'Bạn đã khai chi phí y tế, giáo dục hoặc từ thiện. Các khoản này chỉ được trừ khi tự quyết toán; muốn trừ thì bạn không ủy quyền được.'
+				: 'Muốn xin giảm thuế vì thiên tai hay bệnh hiểm nghèo, bạn phải tự quyết toán; việc này không ủy quyền được.',
 			deadline: selfDeadline,
 			filingOffice: office,
 			params: [individual.use],
-			notes: ['Đây là lựa chọn của bạn: so sánh số hoàn khi ủy quyền và khi tự quyết toán trước khi quyết định.']
+			notes: f.hasSelfOnlyClaims
+				? ['Bỏ các khoản này thì bạn vẫn ủy quyền được. Hãy so hai con số bên dưới rồi chọn.']
+				: []
 		});
 	}
 
@@ -214,10 +223,10 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 5,
 			verdict: 'MAY_AUTHORIZE',
 			canAuthorize: true,
-			summary: `Một nơi trả lương, hợp đồng từ ${minContract.value} tháng, đang làm ở đó: ủy quyền cho doanh nghiệp quyết toán thay.`,
+			summary: `Bạn nhận lương ở một nơi, hợp đồng từ ${minContract.value} tháng và vẫn đang làm ở đó, nên có thể nhờ nơi này quyết toán thay.`,
 			deadline: null,
 			params: [minContract.use],
-			notes: ['Nếu tự quyết toán có lợi hơn (ví dụ trừ được y tế, giáo dục), bạn vẫn được tự quyết toán.']
+			notes: ['Ủy quyền là quyền của bạn, không phải nghĩa vụ. Tự quyết toán có lợi hơn thì bạn vẫn tự làm được.']
 		});
 	}
 
@@ -227,11 +236,11 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 6,
 			verdict: 'MAY_AUTHORIZE',
 			canAuthorize: true,
-			summary: 'Một nơi trả lương, cộng vãng lai đã khấu trừ 10% bình quân tháng không quá ngưỡng: vẫn ủy quyền được.',
+			summary: 'Bạn nhận lương ở một nơi và có thêm thu nhập vãng lai đã bị khấu trừ 10%, bình quân mỗi tháng không vượt ngưỡng. Bạn vẫn ủy quyền được.',
 			amounts: { casualMonthlyAverage: f.casualMonthlyAverage, casualCap: casualCap.value },
 			deadline: null,
 			params: [minContract.use, casualCap.use],
-			notes: ['Muốn gộp phần vãng lai vào quyết toán thì phải tự quyết toán.']
+			notes: ['Muốn gộp thu nhập vãng lai để tính lại thuế thì bạn phải tự quyết toán.']
 		});
 	}
 
@@ -243,7 +252,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 				step: 8,
 				verdict: 'NOT_REQUIRED',
 				canAuthorize: false,
-				summary: 'Chỉ có khoản chi trả bảo hiểm đã bị khấu trừ 10%: không phải quyết toán.',
+				summary: 'Thu nhập duy nhất của bạn là khoản chi trả bảo hiểm đã bị khấu trừ 10%, nên bạn không phải quyết toán.',
 				deadline: null,
 				params: [ins.use]
 			});
@@ -255,7 +264,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 7,
 			verdict: 'NOT_REQUIRED',
 			canAuthorize: false,
-			summary: 'Không có thu nhập từ tiền lương, tiền công trong kỳ: không có gì để quyết toán.',
+			summary: 'Bạn chưa có thu nhập từ tiền lương, tiền công trong năm, nên không có gì để quyết toán.',
 			deadline: null
 		});
 	}
@@ -266,26 +275,26 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 7,
 			verdict: 'NEEDS_DELTA',
 			canAuthorize: false,
-			summary: 'Lương từ hai nơi trở lên, đã nghỉ việc, hoặc vãng lai vượt ngưỡng: cần tính số chênh lệch để biết có phải quyết toán.',
+			summary: `${because}Cần tính số chênh lệch để biết bạn có phải quyết toán không.`,
 			deadline: null,
 			params: [casualCap.use]
 		});
 	}
 	const threshold = resolveByPeriod('settlement.smallDeltaThreshold', rb.settlement.smallDeltaThreshold);
 	const smallNotes = threshold.use.openIssues.includes('oi-3')
-		? ['Năm nay có thể vẫn phải nộp hồ sơ dù được miễn nộp tiền (điểm mở 3).']
+		? ['Năm nay có thể bạn vẫn phải nộp hồ sơ quyết toán, dù được miễn nộp tiền. Cơ quan thuế chưa hướng dẫn rõ điểm này.']
 		: [];
 	if (delta.direction === 'PAY' && delta.amount > threshold.value) {
 		return done({
 			step: 7,
 			verdict: 'MUST_SELF_SETTLE',
 			canAuthorize: false,
-			summary: 'Phải nộp thêm vượt ngưỡng miễn: bắt buộc tự quyết toán.',
+			summary: `${because}Số thuế còn thiếu vượt mức được miễn, nên bạn phải tự quyết toán và nộp phần thiếu.`,
 			amounts: { delta: delta.amount, smallThreshold: threshold.value },
 			deadline: selfDeadline,
 			filingOffice: office,
 			params: [threshold.use, individual.use],
-			notes: ['Nộp chậm có tiền chậm nộp 0,03%/ngày trên số thuế chậm, và có thể bị phạt chậm nộp hồ sơ.']
+			notes: ['Nộp muộn thì mỗi ngày phải trả thêm 0,03% trên số thuế nộp muộn, và có thể bị phạt vì nộp hồ sơ muộn.']
 		});
 	}
 	if (delta.direction === 'PAY') {
@@ -293,7 +302,7 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			step: 7,
 			verdict: 'EXEMPT_SMALL_DELTA',
 			canAuthorize: false,
-			summary: 'Phải nộp thêm nhưng không quá ngưỡng miễn: được miễn nộp.',
+			summary: `${because}Số thuế còn thiếu không vượt mức được miễn, nên bạn không phải nộp.`,
 			amounts: { delta: delta.amount, smallThreshold: threshold.value },
 			deadline: null,
 			params: [threshold.use],
@@ -307,20 +316,20 @@ export function decideObligation(rb: Rulebook, f: ObligationFacts, delta?: Settl
 			verdict: 'MAY_SELF_SETTLE_FOR_REFUND',
 			canAuthorize: false,
 			summary: small
-				? 'Nộp thừa không quá ngưỡng: được bù trừ vào kỳ sau, không hoàn.'
-				: 'Nộp thừa: tự quyết toán nếu muốn được hoàn.',
+				? `${because}Số nộp thừa nhỏ, không đủ mức để hoàn, nên được trừ vào số thuế kỳ sau.`
+				: `${because}Bạn đã nộp thừa. Muốn lấy lại tiền thì tự quyết toán và đề nghị hoàn.`,
 			amounts: { delta: delta.amount, smallThreshold: threshold.value },
 			deadline: selfDeadline,
 			filingOffice: office,
 			params: [threshold.use, individual.use],
-			notes: ['Nộp chậm hồ sơ đề nghị hoàn thì không bị phạt.']
+			notes: ['Nộp hồ sơ đề nghị hoàn sau hạn thì không bị phạt.']
 		});
 	}
 	return done({
 		step: 7,
 		verdict: 'NOT_REQUIRED',
 		canAuthorize: false,
-		summary: 'Số đã khấu trừ bằng đúng số thuế cả năm: không phải quyết toán.',
+		summary: 'Số đã khấu trừ bằng đúng số thuế cả năm, nên bạn không phải quyết toán.',
 		deadline: null
 	});
 }

@@ -28,6 +28,8 @@ export interface Lever {
 	readonly per?: Money;
 	readonly requiresSelfSettlement: boolean;
 	readonly conditions: readonly string[];
+	/** Mức luật định đi kèm điều kiện, số nguyên đồng; UI tự định dạng. */
+	readonly limits: readonly { readonly label: string; readonly amount: Money }[];
 	readonly params: readonly ParamUse[];
 	readonly flags: readonly Flag[];
 }
@@ -37,6 +39,11 @@ export function savingFor(rb: Rulebook, assessableIncome: Money, x: Money): Mone
 	const schedule = annualScheduleOf(rb).value;
 	const r = resolveByPeriod('rounding', rb.rounding).value.annualTax;
 	return progressiveTax(schedule, assessableIncome, r) - progressiveTax(schedule, maxMoney(0, assessableIncome - x), r);
+}
+
+function viDate(d: IsoDate): string {
+	const [y, m, day] = d.split('-');
+	return `${day}/${m}/${y}`;
 }
 
 function midMonth(year: number, month: number): IsoDate {
@@ -70,11 +77,8 @@ export function findLevers(rb: Rulebook, c: TaxYearCase, base: Assessment): Leve
 		room: depRoom,
 		saving: savingFor(rb, tn, depRoom),
 		requiresSelfSettlement: false,
-		conditions: [
-			`Đăng ký trước ${deadline.value}.`,
-			`Thu nhập của người phụ thuộc không quá ${limit.value} đ/tháng từ mọi nguồn.`,
-			'Mỗi người phụ thuộc chỉ được một người nộp thuế khai.'
-		],
+		conditions: [`Đăng ký chậm nhất ngày ${viDate(deadline.value)}.`, 'Mỗi người phụ thuộc chỉ được một người khai giảm trừ.'],
+		limits: [{ label: 'Thu nhập của người phụ thuộc, tính bình quân mỗi tháng từ mọi nguồn', amount: limit.value }],
 		params: [dep.use, deadline.use, limit.use]
 	});
 
@@ -84,18 +88,19 @@ export function findLevers(rb: Rulebook, c: TaxYearCase, base: Assessment): Leve
 	push({
 		id: 'VOLUNTARY_PENSION',
 		label: pen.value.covers.includes('LIFE_INSURANCE')
-			? 'Hưu trí tự nguyện, bảo hiểm nhân thọ (cộng chung một trần)'
+			? 'Hưu trí tự nguyện và bảo hiểm nhân thọ (chung một mức tối đa)'
 			: 'Hưu trí tự nguyện',
 		room: penRoom,
 		saving: savingFor(rb, tn, penRoom),
 		requiresSelfSettlement: false,
-		conditions: ['Gộp cả phần bạn và doanh nghiệp đóng.', 'Sản phẩm của doanh nghiệp được phép kinh doanh tại Việt Nam.'],
+		conditions: ['Tính cả phần công ty đóng cho bạn.', 'Mua của công ty bảo hiểm hoặc quỹ hưu trí được phép hoạt động tại Việt Nam.'],
+		limits: [],
 		params: [pen.use]
 	});
 
 	// Y tế, giáo dục
 	for (const [key, id, label, cond] of [
-		['medical', 'MEDICAL', 'Chi phí y tế', 'Hóa đơn đứng tên, chưa được bảo hiểm chi trả.'],
+		['medical', 'MEDICAL', 'Chi phí y tế', 'Có hóa đơn đứng tên; phần bảo hiểm đã chi trả thì không được trừ.'],
 		['education', 'EDUCATION', 'Chi phí giáo dục', 'Hóa đơn đứng tên bạn hoặc người phụ thuộc.']
 	] as const) {
 		const r = resolveByPeriod(`deductions.${key}`, d[key]);
@@ -107,7 +112,8 @@ export function findLevers(rb: Rulebook, c: TaxYearCase, base: Assessment): Leve
 			room,
 			saving: savingFor(rb, tn, room),
 			requiresSelfSettlement: true,
-			conditions: [cond, 'Chỉ trừ khi tự quyết toán.'],
+			conditions: [cond],
+			limits: [],
 			params: [r.use]
 		});
 	}
@@ -123,7 +129,8 @@ export function findLevers(rb: Rulebook, c: TaxYearCase, base: Assessment): Leve
 			saving: savingFor(rb, tn, per),
 			per,
 			requiresSelfSettlement: true,
-			conditions: ['Qua tổ chức được phép, có chứng từ.', 'Chỉ trừ khi tự quyết toán.'],
+			conditions: ['Qua tổ chức được phép, có chứng từ.'],
+			limits: [],
 			params: [ch.use]
 		});
 	}
@@ -143,11 +150,12 @@ export function findLevers(rb: Rulebook, c: TaxYearCase, base: Assessment): Leve
 		if (cap > 0) {
 			push({
 				id: 'MEAL_ALLOWANCE',
-				label: 'Trả một phần lương thành tiền ăn ca bằng tiền',
+				label: 'Chuyển một phần lương thành phụ cấp tiền ăn ca',
 				room: cap,
 				saving: savingFor(rb, tn, cap),
 				requiresSelfSettlement: false,
-				conditions: ['Phải ghi trong quy chế của doanh nghiệp; cần doanh nghiệp đồng ý.'],
+				conditions: ['Công ty phải đồng ý và ghi khoản này trong quy chế.'],
+				limits: [],
 				params: uses
 			});
 		}
@@ -181,10 +189,10 @@ export function compareScenarios(
 
 /** Thủ thuật rủi ro cần cảnh báo (docs/research, Câu hỏi (3)). */
 export const RISKY_TRICKS = [
-	{ code: 'DEPENDENT_OVER_INCOME', message: 'Khai người phụ thuộc có thu nhập vượt mức cho phép.' },
+	{ code: 'DEPENDENT_OVER_INCOME', message: 'Khai người phụ thuộc có thu nhập vượt mức luật cho phép.' },
 	{ code: 'DEPENDENT_DUPLICATED', message: 'Nhiều người cùng khai một người phụ thuộc.' },
-	{ code: 'SPLIT_PAYMENTS', message: 'Chia nhỏ khoản chi dưới ngưỡng khấu trừ 10%: chỉ tránh được khấu trừ, không tránh được thuế.' },
-	{ code: 'FALSE_COMMITMENT', message: 'Cam kết sai để không bị khấu trừ.' },
-	{ code: 'INELIGIBLE_MEDICAL_EDUCATION', message: 'Khai chi phí y tế đã được bảo hiểm trả, hoặc học phí ở cơ sở nước ngoài.' },
-	{ code: 'DISGUISED_SERVICE_CONTRACT', message: 'Dùng hợp đồng dịch vụ cho công việc toàn thời gian.' }
+	{ code: 'SPLIT_PAYMENTS', message: 'Chia nhỏ khoản chi cho dưới ngưỡng khấu trừ 10%. Cách này chỉ tránh được khấu trừ, không tránh được thuế.' },
+	{ code: 'FALSE_COMMITMENT', message: 'Ký cam kết không đúng sự thật để khỏi bị khấu trừ thuế.' },
+	{ code: 'INELIGIBLE_MEDICAL_EDUCATION', message: 'Khai chi phí y tế mà bảo hiểm đã trả, hoặc học phí ở cơ sở nước ngoài.' },
+	{ code: 'DISGUISED_SERVICE_CONTRACT', message: 'Ký hợp đồng dịch vụ cho một công việc thực chất là toàn thời gian.' }
 ] as const;

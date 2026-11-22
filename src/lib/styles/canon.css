@@ -1,0 +1,111 @@
+/* Canon tokens: một hệ cho mọi component (skill Svelte Canon, Modern Swiss).
+   Import một lần ở +layout.svelte. Component đọc bằng var(--canon-x, dự-phòng). */
+
+:root {
+	/* Chữ: hai cỡ mỗi màn. Thân 17 → 20 px, trưng bày = 2 × thân. */
+	--canon-body: clamp(1.0625rem, 0.95rem + 0.4vw, 1.25rem);
+	--canon-leading: 1.45;
+	--canon-display: calc(2 * var(--canon-body));
+	--canon-display-leading: 1.05;
+	/* Một sans có dấu tiếng Việt chuẩn. Chưa tự host: dùng font máy nếu có. */
+	--canon-font: 'Be Vietnam Pro', 'Inter', 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+	--canon-measure: 70ch;
+
+	/* Một dòng là đơn vị của mọi khoảng cách. */
+	--canon-line: calc(var(--canon-body) * var(--canon-leading));
+	--canon-space-3: calc(var(--canon-line) / 3);
+	--canon-space-1: var(--canon-line);
+	--canon-space-2: calc(var(--canon-line) * 2);
+	--canon-space-4: calc(var(--canon-line) * 4);
+
+	/* Lưới: 4 cột điện thoại, 12 cột desktop; gutter = một dòng. */
+	--canon-cols: 4;
+	--canon-gutter: var(--canon-space-1);
+	--canon-margin: var(--canon-gutter);
+
+	--canon-rule-strong: 2px;
+	--canon-rule-thin: 1px;
+
+	/* Màu: mực, giấy, một tín hiệu. */
+	--canon-ink: #111111;
+	--canon-paper: #ffffff;
+	--canon-mute: #595959;
+	--canon-signal: #d71920;
+
+	/* Thời gian: chỉ dùng cho đổi trạng thái trên trang này. */
+	--canon-t-3: 100ms;
+	--canon-t-1: 300ms;
+	--canon-ease-state: cubic-bezier(0.65, 0, 0.35, 1);
+
+	color-scheme: light dark;
+}
+
+@media (min-width: 64rem) {
+	:root {
+		--canon-cols: 12;
+		--canon-margin: calc(var(--canon-gutter) * 2);
+	}
+}
+
+/* Tối: đổi giá trị, giữ cấu trúc. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--canon-ink: #f2f2f2;
+		--canon-paper: #111111;
+		--canon-mute: #a6a6a6;
+		--canon-signal: #ff4d4d;
+	}
+}
+:root[data-theme='dark'] {
+	--canon-ink: #f2f2f2;
+	--canon-paper: #111111;
+	--canon-mute: #a6a6a6;
+	--canon-signal: #ff4d4d;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+body {
+	margin: 0;
+	background: var(--canon-paper);
+	color: var(--canon-ink);
+	font-family: var(--canon-font);
+	font-size: var(--canon-body);
+	line-height: var(--canon-leading);
+	-webkit-font-smoothing: antialiased;
+	font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+dl,
+dd,
+figure {
+	margin: 0;
+}
+
+button,
+input,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+:focus-visible {
+	outline: 2px solid var(--canon-signal);
+	outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition-duration: 0ms !important;
+	}
+}

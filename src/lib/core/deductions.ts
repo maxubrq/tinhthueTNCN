@@ -45,13 +45,17 @@ function selfOnly(
 	if (!claimed) return NONE;
 	const input = `claims.${key}`;
 	if (rule === null) {
-		warnings.push({ code: `${key.toUpperCase()}_NOT_IN_PERIOD`, message: `Kỳ ${rb.taxYear} không có giảm trừ ${LABEL[key]}.`, inputs: [input] });
+		warnings.push({
+			code: `${key.toUpperCase()}_NOT_IN_PERIOD`,
+			message: `Năm ${rb.taxYear} chưa có khoản giảm trừ ${LABEL[key]}, nên số bạn nhập không được tính.`,
+			inputs: [input]
+		});
 		return { amount: 0, uses: [r.use], inputs: [input] };
 	}
 	if (scenario.filing !== 'SELF') {
 		warnings.push({
 			code: `${key.toUpperCase()}_SELF_ONLY`,
-			message: `Giảm trừ ${LABEL[key]} chỉ được trừ khi tự quyết toán; kịch bản ủy quyền không tính khoản này.`,
+			message: `${CAP[key]} chỉ được trừ khi tự quyết toán, nên kết quả ủy quyền không tính khoản này.`,
 			inputs: [input]
 		});
 		return { amount: 0, uses: [r.use], inputs: [input] };
@@ -60,7 +64,13 @@ function selfOnly(
 	return { amount, uses: [r.use], inputs: [input] };
 }
 
-const LABEL = { medical: 'y tế', education: 'giáo dục', charity: 'từ thiện' } as const;
+const LABEL = { medical: 'chi phí y tế', education: 'chi phí giáo dục', charity: 'từ thiện' } as const;
+const CAP = { medical: 'Chi phí y tế', education: 'Chi phí giáo dục', charity: 'Tiền từ thiện' } as const;
+
+function viDate(d: string): string {
+	const [y, m, day] = d.split('-');
+	return `${day}/${m}/${y}`;
+}
 
 export function annualDeductions(
 	rb: Rulebook,
@@ -95,7 +105,7 @@ export function annualDeductions(
 		if (dep.registeredOn > deadline.value) {
 			warnings.push({
 				code: 'DEPENDENT_LATE_REGISTRATION',
-				message: `${dep.name}: đăng ký ngày ${dep.registeredOn}, sau hạn ${deadline.value}, nên không được tính.`,
+				message: `${dep.name} được đăng ký sau ngày ${viDate(deadline.value)}, nên không được tính giảm trừ.`,
 				inputs: [`${w}.registeredOn`],
 				openIssues: deadline.use.openIssues
 			});
@@ -106,7 +116,7 @@ export function annualDeductions(
 			if (dep.monthlyIncome > incomeLimit.value) {
 				warnings.push({
 					code: 'DEPENDENT_INCOME_OVER_LIMIT',
-					message: `${dep.name}: thu nhập bình quân ${dep.monthlyIncome} đ/tháng vượt mức ${incomeLimit.value} đ, nên không được tính.`,
+					message: `${dep.name} có thu nhập bình quân mỗi tháng vượt mức luật cho phép với người phụ thuộc, nên không được tính giảm trừ.`,
 					inputs: [`${w}.monthlyIncome`],
 					openIssues: incomeLimit.use.openIssues
 				});
@@ -116,7 +126,7 @@ export function annualDeductions(
 		if (dep.hasPension) {
 			warnings.push({
 				code: 'DEPENDENT_HAS_PENSION',
-				message: `${dep.name}: có lương hưu. Chưa rõ lương hưu có tính vào mức thu nhập tối đa không; app đang vẫn tính.`,
+				message: `${dep.name} có lương hưu. Luật chưa rõ lương hưu có tính vào thu nhập của người phụ thuộc không; app tạm vẫn tính giảm trừ.`,
 				inputs: [`${w}.hasPension`],
 				openIssues: ['oi-2']
 			});
@@ -147,7 +157,7 @@ export function annualDeductions(
 		else
 			warnings.push({
 				code: 'LIFE_INSURANCE_NOT_DEDUCTIBLE',
-				message: `Kỳ ${rb.taxYear} chưa cho trừ bảo hiểm nhân thọ.`,
+				message: `Năm ${rb.taxYear} chưa được trừ phí bảo hiểm nhân thọ, nên số bạn nhập không được tính.`,
 				inputs: ['claims.lifeInsurance']
 			});
 	}

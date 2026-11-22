@@ -101,7 +101,7 @@ export function assess(rb: Rulebook, c: TaxYearCase, scenario: Scenario, options
 	if (scenario.filing === 'AUTHORIZED' && included[0]?.regime === 'FLAT') {
 		warnings.push({
 			code: 'AUTHORIZED_SOURCE_NOT_PROGRESSIVE',
-			message: 'Nguồn được ủy quyền không có hợp đồng từ 3 tháng; không thể ủy quyền quyết toán cho nơi này.'
+			message: 'Nơi này không ký hợp đồng từ 3 tháng với bạn, nên không nhận ủy quyền quyết toán được.'
 		});
 	}
 
@@ -117,14 +117,14 @@ export function assess(rb: Rulebook, c: TaxYearCase, scenario: Scenario, options
 		const uses = sm.flatMap((m) => m.uses);
 		trace.add({
 			id: `source:${s.id}:taxable`,
-			label: `Thu nhập chịu thuế — ${s.name}`,
+			label: `Thu nhập chịu thuế ở ${s.name}`,
 			amount: sum(sm.map((m) => m.taxableIncome)),
 			inputs: paymentInputs(i, sm, ['gross', 'mealAllowanceCash', 'mealExemptByPolicy', 'overtime', 'otherExempt', 'housing']),
 			params: uses.filter((u) => !u.key.startsWith('insurance.'))
 		});
 		trace.add({
 			id: `source:${s.id}:insurance`,
-			label: `Bảo hiểm bắt buộc — ${s.name}`,
+			label: `Bảo hiểm bắt buộc ở ${s.name}`,
 			amount: sum(sm.map((m) => m.insurance)),
 			inputs: paymentInputs(i, sm, ['insurance']),
 			params: uses.filter((u) => u.key.startsWith('insurance.'))
@@ -153,7 +153,7 @@ export function assess(rb: Rulebook, c: TaxYearCase, scenario: Scenario, options
 		trace.add({ id: `deduction:${id}`, label, amount: item.amount, inputs: item.inputs, params: item.uses, note: item.note });
 	const dedLines = [
 		dedLine('taxpayer', `Giảm trừ bản thân (${ded.taxpayer.months} tháng)`, ded.taxpayer),
-		dedLine('dependents', `Giảm trừ người phụ thuộc (${ded.dependents.counted.reduce((a, x) => a + x.months, 0)} người-tháng)`, ded.dependents),
+		dedLine('dependents', `Giảm trừ người phụ thuộc (tổng ${ded.dependents.counted.reduce((a, x) => a + x.months, 0)} tháng)`, ded.dependents),
 		dedLine('pension', 'Hưu trí tự nguyện, bảo hiểm nhân thọ', ded.pension),
 		dedLine('medical', 'Chi phí y tế', ded.medical),
 		dedLine('education', 'Chi phí giáo dục', ded.education),
@@ -172,7 +172,7 @@ export function assess(rb: Rulebook, c: TaxYearCase, scenario: Scenario, options
 		label: 'Thu nhập tính thuế năm',
 		amount: maxMoney(0, taxable.amount - insurance.amount - deductions.amount),
 		dependsOn: [taxable.id, insurance.id, deductions.id],
-		note: 'Không âm.'
+		note: 'Giảm trừ lớn hơn thu nhập thì lấy bằng 0.'
 	});
 	const schedule = annualScheduleOf(rb);
 	const rounding = resolveByPeriod('rounding', rb.rounding);
@@ -219,13 +219,13 @@ function casualWarning(
 	if (excluded && average > cap.value) {
 		warnings.push({
 			code: 'CASUAL_OVER_CAP_EXCLUDED',
-			message: `Thu nhập vãng lai bình quân ${average} đ/tháng vượt ${cap.value} đ: kịch bản này không gộp, nhưng luật yêu cầu tự quyết toán và gộp.`,
+			message: 'Thu nhập vãng lai bình quân mỗi tháng của bạn vượt ngưỡng, nên luật buộc bạn tự quyết toán và gộp khoản này. Kết quả này chưa gộp, chỉ để so sánh.',
 			openIssues: cap.use.openIssues
 		});
 	} else if (scenario.filing === 'SELF' && !scenario.includeCasual) {
 		warnings.push({
 			code: 'CASUAL_EXCLUDED',
-			message: 'Kịch bản này không gộp vãng lai: bỏ cả phần thu nhập lẫn số đã khấu trừ của các nguồn đó.',
+			message: 'Kết quả này không gộp thu nhập vãng lai: bỏ cả khoản thu nhập lẫn 10% đã khấu trừ ở những nơi đó.',
 			openIssues: ['oi-16']
 		});
 	}
@@ -245,7 +245,7 @@ function withheldLines(
 		if (s.withheld) {
 			trace.add({
 				id,
-				label: `Đã khấu trừ — ${s.name}`,
+				label: `Thuế ${s.name} đã khấu trừ`,
 				amount: s.withheld.amount,
 				inputs: [`incomeSources[${i}].withheld.amount`]
 			});
@@ -254,13 +254,12 @@ function withheldLines(
 		const sim = simulateWithholding(rb, c, months, i, practice);
 		trace.add({
 			id,
-			label: `Đã khấu trừ (app ước tính) — ${s.name}`,
+			label: `Thuế ${s.name} đã khấu trừ (app ước tính)`,
 			amount: sim.amount,
 			inputs: paymentInputs(i, months.filter((m) => m.sourceIndex === i), ['gross']),
 			params: sim.uses,
 			dependsOn: [`source:${s.id}:taxable`],
-			extraFlags: [{ kind: 'SIMULATED', sourceId: s.id, practiceIds: sim.practiceIds }],
-			note: 'Giả định: bạn chưa nhập số thực tế. Tra số thật trên eTax hoặc chứng từ khấu trừ.'
+			extraFlags: [{ kind: 'SIMULATED', sourceId: s.id, practiceIds: sim.practiceIds }]
 		});
 		return { sourceId: s.id, regime, amount: sim.amount, provenance: 'SIMULATED', practiceIds: sim.practiceIds };
 	});
@@ -345,7 +344,7 @@ function nonResident(
 		const sm = months.filter((m) => m.sourceIndex === i);
 		trace.add({
 			id: `source:${s.id}:taxable`,
-			label: `Thu nhập chịu thuế — ${s.name}`,
+			label: `Thu nhập chịu thuế ở ${s.name}`,
 			amount: sum(sm.map((m) => m.taxableIncome)),
 			inputs: paymentInputs(i, sm, ['gross']),
 			params: sm.flatMap((m) => m.uses).filter((u) => !u.key.startsWith('insurance.'))
@@ -362,13 +361,13 @@ function nonResident(
 	const rounding = resolveByPeriod('rounding', rb.rounding);
 	const annualTax = trace.add({
 		id: 'annualTax',
-		label: 'Thuế TNCN (không cư trú, thuế suất cố định)',
+		label: 'Thuế TNCN của người không cư trú (thuế suất cố định)',
 		amount: fromBpsNumerator(BigInt(taxable.amount) * BigInt(rate.value), rounding.value.annualTax),
 		params: [rate.use, rounding.use],
 		dependsOn: [taxable.id],
-		note: 'Người không cư trú không có giảm trừ gia cảnh, bảo hiểm hay khoản giảm trừ khác.'
+		note: 'Người không cư trú không được giảm trừ gia cảnh, bảo hiểm hay bất kỳ khoản nào khác.'
 	});
-	warnings.push({ code: 'NON_RESIDENT', message: 'Người không cư trú chưa nằm trong phạm vi hỗ trợ đầy đủ của app.' });
+	warnings.push({ code: 'NON_RESIDENT', message: 'App chưa tính đầy đủ cho người không cư trú; hãy coi con số là tham khảo.' });
 	const withheld = withheldLines(rb, c, months, included, trace, practice);
 	return finish(rb, c, scenario, included, trace, warnings, {
 		taxable: taxable.amount,
